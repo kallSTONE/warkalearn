@@ -1,0 +1,182 @@
+[
+    {
+        "id": 1,
+        "slug": "english-foundations",
+        "title": "English Foundations",
+        "description": "Build core grammar, vocabulary, and everyday conversation skills.",
+        "image": "/assets/images/courses-Thumbnail/courceT1.jpg",
+        "category": "General English",
+        "level": "Beginner",
+        "estimated_hours": "40",
+        "students": 1240,
+        "rating": 4.8,
+        "published": true,
+        "lessons_preview": [
+            {
+                "id": 1,
+                "title": "Everyday introductions",
+                "time": 30
+            },
+            {
+                "id": 2,
+                "title": "Basic grammar patterns",
+                "time": 45
+            },
+            {
+                "id": 3,
+                "title": "Listening for key words",
+                "time": 40
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "slug": "speaking-confidence",
+        "title": "Speaking Confidence",
+        "description": "Guided speaking practice with prompts, feedback, and fluency drills.",
+        "image": "/assets/images/courses-Thumbnail/courceT.jpg",
+        "category": "Speaking",
+        "level": "Intermediate",
+        "estimated_hours": "35",
+        "students": 2150,
+        "rating": 4.9,
+        "published": true,
+        "lessons_preview": [
+            {
+                "id": 1,
+                "title": "Confidence routines",
+                "time": 35
+            },
+            {
+                "id": 2,
+                "title": "Storytelling practice",
+                "time": 50
+            },
+            {
+                "id": 3,
+                "title": "Real-life role plays",
+                "time": 45
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "slug": "pronunciation-clinic",
+        "title": "Pronunciation Clinic",
+        "description": "Master stress, intonation, and the sounds that affect clarity.",
+        "image": "/assets/images/courses-Thumbnail/courceT2.jpg",
+        "category": "Pronunciation",
+        "level": "Intermediate",
+        "estimated_hours": "25",
+        "students": 980,
+        "rating": 4.7,
+        "published": true,
+        "lessons_preview": [
+            {
+                "id": 1,
+                "title": "Common sound pairs",
+                "time": 30
+            },
+            {
+                "id": 2,
+                "title": "Word stress practice",
+                "time": 35
+            },
+            {
+                "id": 3,
+                "title": "Sentence rhythm",
+                "time": 40
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "slug": "business-english",
+        "title": "Business English",
+        "description": "Improve meetings, emails, and presentations for the workplace.",
+        "image": "/assets/images/courses-Thumbnail/courceT1.jpg",
+        "category": "Workplace English",
+        "level": "Intermediate",
+        "estimated_hours": "45",
+        "students": 1120,
+        "rating": 4.6,
+        "published": true,
+        "lessons_preview": [
+            {
+                "id": 1,
+                "title": "Meeting language",
+                "time": 40
+            },
+            {
+                "id": 2,
+                "title": "Email clarity",
+                "time": 50
+            },
+            {
+                "id": 3,
+                "title": "Presenting with confidence",
+                "time": 45
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "slug": "ielts-prep",
+        "title": "IELTS Preparation",
+        "description": "Targeted practice for reading, writing, listening, and speaking.",
+        "image": "/assets/images/courses-Thumbnail/courceT.jpg",
+        "category": "Exams",
+        "level": "Advanced",
+        "estimated_hours": "60",
+        "students": 780,
+        "rating": 4.7,
+        "published": true,
+        "lessons_preview": [
+            {
+                "id": 1,
+                "title": "Writing task structure",
+                "time": 45
+            },
+            {
+                "id": 2,
+                "title": "Listening strategies",
+                "time": 50
+            },
+            {
+                "id": 3,
+                "title": "Speaking mock tests",
+                "time": 55
+            }
+        ]
+    },
+    {
+        "id": 6,
+        "slug": "email-and-writing",
+        "title": "Email and Writing Essentials",
+        "description": "Write clear messages, reports, and professional responses.",
+        "image": "/assets/images/courses-Thumbnail/courceT2.jpg",
+        "category": "Writing",
+        "level": "Intermediate",
+        "estimated_hours": "30",
+        "students": 640,
+        "rating": 4.5,
+        "published": true,
+        "lessons_preview": [
+            {
+                "id": 1,
+                "title": "Polite openings and closings",
+                "time": 30
+            },
+            {
+                "id": 2,
+                "title": "Short, clear paragraphs",
+                "time": 35
+            },
+            {
+                "id": 3,
+                "title": "Editing for tone",
+                "time": 40
+            }
+        ]
+    }
+]

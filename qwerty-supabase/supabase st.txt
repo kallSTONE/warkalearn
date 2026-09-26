@@ -1,0 +1,33 @@
+6OczhLXd0KiEvGHb
+
+
+anon public eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1aWF5YmxvZHRmY3Ruc3JscGV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3Njc1NjAsImV4cCI6MjA3NTM0MzU2MH0.omgJN4Cb1YHqwlKv7ylTGt0_XH-FCewdQ_5yDWtsgHQ
+
+
+service_role Secrete eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1aWF5YmxvZHRmY3Ruc3JscGV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTc2NzU2MCwiZXhwIjoyMDc1MzQzNTYwfQ.gAt773Tcihc2UnIA7kbdlg4M-r9ZQv-IDy63P3nsh98
+
+
+url https://kuiayblodtfctnsrlpev.supabase.co
+
+
+JWT secrete Q6Pw85tkaYFWmVN7FpB09rnczkO+gSPLbHzr+moUHkbC51sCN5oI96dSZZiweWAIkLW/4S2k0i0flH5WgHT9AA==
+
+
+
+
+
+
+
+
+
+
+DB Name: UltimateG1
+DB password : 6OczhLXd0KiEvGHb
+
+Project ID : qusvyaugkmhxytfghryw
+
+Project URL : https://qusvyaugkmhxytfghryw.supabase.co
+
+anon public: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1c3Z5YXVna21oeHl0Zmdocnl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjEwMjEsImV4cCI6MjA3NTMzNzAyMX0.KhVYkToxg3jKKsWKP-JWuziBcs1-rgzMJYz2h5IxCgI
+
+service role secrete : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1c3Z5YXVna21oeHl0Zmdocnl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjEwMjEsImV4cCI6MjA3NTMzNzAyMX0.KhVYkToxg3jKKsWKP-JWuziBcs1-rgzMJYz2h5IxCgI

@@ -1,0 +1,122 @@
+{
+  "document": {
+    "title": "Tesfa — AI-Powered Learning for Ethiopian Youth",
+    "pages": [
+      {
+        "title": "Executive Summary",
+        "sections": [
+          {
+            "heading": "Project Title",
+            "content": "Tesfa — AI-Powered Learning for Ethiopian Youth"
+          },
+          {
+            "heading": "Pilot Partnership",
+            "content": "Tesfa + Ethiopian Artificial Intelligence Institute + [TVET/College partner name]"
+          },
+          {
+            "heading": "Duration",
+            "content": "3 months (Pilot)"
+          },
+          {
+            "heading": "Cohort Size",
+            "content": "500 learners (Addis Ababa + 1 regional center)"
+          },
+          {
+            "heading": "Vision",
+            "content": "Tesfa’s mission is to empower Ethiopian youth with market-ready technological skills through an AI-assisted learning platform that adapts to each learner and supports instructors with automation and insights. The pilot will demonstrate how AI tools can improve learning outcomes, reduce dropouts, and better align training with real job opportunities in Ethiopia’s growing digital economy."
+          },
+          {
+            "heading": "Goals",
+            "bullets": [
+              "Increase completion rate of digital courses by 40% vs. baseline.",
+              "Reduce instructor workload on grading and content creation by 50%.",
+              "Detect at-risk learners early and improve retention by 25%.",
+              "Generate job-aligned curricula in partnership with employers.",
+              "Produce evidence for national AI-in-education strategy development."
+            ]
+          },
+          {
+            "heading": "Pilot Overview",
+            "table": {
+              "headers": ["Component", "Description", "Responsible Party"],
+              "rows": [
+                ["Platform Setup", "Deploy Tesfa MVP (web + mobile-friendly) with 4 skill paths", "Tesfa"],
+                ["Training", "Onboard instructors and Institute staff", "Tesfa + Institute"],
+                ["Learner Cohort", "500 students across Addis and 1 regional TVET", "Institute + TVET"],
+                ["Monitoring", "Collect engagement, quiz, and progression data", "Joint"],
+                ["Evaluation", "Analyze results, publish a short impact report", "Institute + Tesfa"]
+              ]
+            }
+          },
+          {
+            "heading": "Focused Skill Paths (initial pilot)",
+            "bullets": [
+              "Foundations of Web Development (HTML/CSS/JS + Git basics)",
+              "Digital Marketing & AI Tools (content, SEO, analytics)",
+              "Mobile Repair & IoT Basics (hardware + connected devices)",
+              "Data Literacy for Beginners (Excel → Python intro)"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Tesfa AI Capabilities & Expected Outcomes",
+        "sections": [
+          {
+            "heading": "AI Capabilities",
+            "table": {
+              "headers": ["AI Capability", "Function", "Pilot Outcome"],
+              "rows": [
+                ["Course Assistant (Chatbot)", "Real-time Q&A + summaries + syllabus guidance", "Faster learner support, 24/7 help"],
+                ["Personalized Learning Paths", "Recommends next lessons/jobs", "Higher learner motivation"],
+                ["Instructor AI Tools", "Generates quizzes + grading rubrics", "Lower prep time"],
+                ["Auto-Grading + Feedback", "Instant feedback on quizzes/coding", "Immediate reinforcement"],
+                ["At-Risk Detection", "Predicts disengagement → sends reminders", "Reduced dropout rate"],
+                ["Curriculum Generator", "Maps lessons to in-demand skills", "Employer relevance"],
+                ["Integrity Detection", "Flags plagiarism", "Trusted certification"]
+              ]
+            }
+          },
+          {
+            "heading": "Evaluation Metrics",
+            "table": {
+              "headers": ["Metric", "Target", "Measurement Method"],
+              "rows": [
+                ["Completion Rate", "+40% vs baseline", "Course analytics"],
+                ["Learner Satisfaction", "≥ 85% positive", "Post-course survey"],
+                ["Instructor Time Saved", "≥ 50%", "Instructor self-reports"],
+                ["Dropout Reduction", "≥ 25%", "Engagement data"],
+                ["Employer Interest", "≥ 3 employers commit to internships", "Signed MOUs"]
+              ]
+            }
+          },
+          {
+            "heading": "Data & Ethics",
+            "bullets": [
+              "Data stored in compliance with Ethiopian data protection guidelines.",
+              "Transparent privacy policy and consent for analytics.",
+              "Human oversight on all AI-generated grading and content."
+            ]
+          },
+          {
+            "heading": "Support Requested from Ethiopian AI Institute",
+            "bullets": [
+              "Institutional endorsement and inclusion in AI-in-Education program.",
+              "Access to partner TVETs for pilot execution.",
+              "Technical advisory collaboration on AI fairness, data handling, and Amharic NLP integration.",
+              "Optional: small co-funding (₦ or USD $xx,xxx) for infrastructure and monitoring."
+            ]
+          },
+          {
+            "heading": "Deliverables (within 3 months)",
+            "bullets": [
+              "Fully functional pilot platform deployed.",
+              "Instructor and learner onboarding materials.",
+              "End-of-pilot evaluation report with KPIs and next-phase plan."
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

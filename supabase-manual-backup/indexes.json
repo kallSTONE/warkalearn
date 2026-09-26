@@ -1,0 +1,92 @@
+[
+    {
+        "indexdef": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX lessons_pkey ON public.lessons USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_enrollments_pkey ON public.course_enrollments USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_enrollments_user_id_course_id_key ON public.course_enrollments USING btree (user_id, course_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX reviews_pkey ON public.reviews USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX site_settings_pkey ON public.site_settings USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX quiz_questions_pkey ON public.quiz_questions USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_media_pkey ON public.course_media USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE INDEX course_media_course_id_idx ON public.course_media USING btree (course_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_review_notes_pkey ON public.course_review_notes USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE INDEX course_review_notes_course_id_idx ON public.course_review_notes USING btree (course_id)"
+    },
+    {
+        "indexdef": "CREATE INDEX course_review_notes_reviewer_id_idx ON public.course_review_notes USING btree (reviewer_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_progress_pkey ON public.course_progress USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_progress_enrollment_id_key ON public.course_progress USING btree (enrollment_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX forum_categories_pkey ON public.forum_categories USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX forum_categories_slug_key ON public.forum_categories USING btree (slug)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX forum_topics_pkey ON public.forum_topics USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX courses_pkey ON public.courses USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX courses_slug_key ON public.courses USING btree (slug)"
+    },
+    {
+        "indexdef": "CREATE INDEX courses_status_idx ON public.courses USING btree (status)"
+    },
+    {
+        "indexdef": "CREATE INDEX courses_published_idx ON public.courses USING btree (published)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX forum_posts_pkey ON public.forum_posts USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_drafts_pkey ON public.course_drafts USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX course_drafts_user_id_key ON public.course_drafts USING btree (user_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX lesson_downloads_pkey ON public.lesson_downloads USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE INDEX lesson_downloads_lesson_id_idx ON public.lesson_downloads USING btree (lesson_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX quizzes_pkey ON public.quizzes USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE INDEX idx_quizzes_course_id ON public.quizzes USING btree (course_id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX lesson_quiz_completions_pkey ON public.lesson_quiz_completions USING btree (id)"
+    },
+    {
+        "indexdef": "CREATE UNIQUE INDEX lesson_quiz_completions_user_id_lesson_id_key ON public.lesson_quiz_completions USING btree (user_id, lesson_id)"
+    }
+]

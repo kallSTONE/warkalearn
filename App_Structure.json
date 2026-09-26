@@ -1,0 +1,306 @@
+{
+    "name": "app",
+    "path": "c:\\Users\\Kalab\\Desktop\\Legal-Training\\app",
+    "type": "directory",
+    "children": [
+        {
+            "name": "about",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "admin",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "analytics",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "articles",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "loading.tsx",
+                            "type": "file"
+                        },
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "courses",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "[id]",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "edit",
+                                    "type": "folder",
+                                    "children": [
+                                        {
+                                            "name": "page.tsx",
+                                            "type": "file"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "page.tsx",
+                                    "type": "file"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "new",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "page.tsx",
+                                    "type": "file"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "loading.tsx",
+                            "type": "file"
+                        },
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "dashboard",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "students",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "loading.tsx",
+                            "type": "file"
+                        },
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "layout.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "api",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "admin",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "courses",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "route.ts",
+                                    "type": "file"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "download",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "route.ts",
+                            "type": "file"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "blog",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "[id]",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "community",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "dashboard",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "learn",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "course",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "[slug]",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "enroll",
+                                    "type": "folder",
+                                    "children": [
+                                        {
+                                            "name": "EnrollClient.tsx",
+                                            "type": "file"
+                                        },
+                                        {
+                                            "name": "page.tsx",
+                                            "type": "file"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "lesson",
+                                    "type": "folder",
+                                    "children": [
+                                        {
+                                            "name": "[lesson_number]",
+                                            "type": "folder",
+                                            "children": [
+                                                {
+                                                    "name": "page.tsx",
+                                                    "type": "file"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "page.tsx",
+                                    "type": "file"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "login",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "register",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "resources",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "shop",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "globals.css",
+            "type": "file"
+        },
+        {
+            "name": "layout.tsx",
+            "type": "file"
+        },
+        {
+            "name": "page.tsx",
+            "type": "file"
+        },
+        {
+            "name": "theme-sets.css",
+            "type": "file"
+        }
+    ],
+    "metadata": {
+        "generated": "2025-12-06T06:50:25.479Z",
+        "generator": "FileTree Pro Extension",
+        "version": "0.2.0",
+        "showIcons": false,
+        "maxDepth": 10
+    }
+}

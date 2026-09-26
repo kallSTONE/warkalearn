@@ -1,0 +1,243 @@
+create table public.reviews (
+  id serial not null,
+  course_id integer null,
+  user_name character varying(255) null,
+  rating numeric(2, 1) not null,
+  comment text null,
+  created_at timestamp without time zone null default now(),
+  constraint reviews_pkey primary key (id),
+  constraint reviews_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+This table has no RLS policies
+
+
+
+
+create table public.profiles (
+  id uuid not null,
+  full_name text null,
+  avatar_url text null,
+  bio text null,
+  role text null default 'student'::text,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint profiles_pkey primary key (id),
+  constraint profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create trigger update_profiles_updated_at BEFORE
+update on profiles for EACH row
+execute FUNCTION update_modified_column ();
+
+This table has 2 RLS Policies, Users can update their own profile and Users can view their own profile
+
+
+
+
+
+create table public.products (
+  id uuid not null default gen_random_uuid (),
+  name text not null,
+  description text null,
+  price numeric(10, 2) not null,
+  image_url text null,
+  category text null,
+  featured boolean null default false,
+  bestseller boolean null default false,
+  stock_quantity integer null default 0,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint products_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create trigger update_products_updated_at BEFORE
+update on products for EACH row
+execute FUNCTION update_modified_column ();
+
+This table has 2 RLS policies, Everyone can view products and Only admins can modify products
+
+
+
+
+
+
+
+create table public.orders (
+  id uuid not null default gen_random_uuid (),
+  user_id uuid not null,
+  status text null default 'pending'::text,
+  total_amount numeric(10, 2) not null,
+  payment_intent_id text null,
+  payment_method text null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint orders_pkey primary key (id),
+  constraint orders_user_id_fkey foreign KEY (user_id) references profiles (id)
+) TABLESPACE pg_default;
+
+create trigger update_orders_updated_at BEFORE
+update on orders for EACH row
+execute FUNCTION update_modified_column ();
+
+This table has two RLS policies users can create their own orders and Users can view their own orders
+
+
+
+
+
+
+create table public.order_items (
+  id uuid not null default gen_random_uuid (),
+  order_id uuid not null,
+  product_id uuid not null,
+  quantity integer not null default 1,
+  price_per_unit numeric(10, 2) not null,
+  created_at timestamp with time zone null default now(),
+  constraint order_items_pkey primary key (id),
+  constraint order_items_order_id_fkey foreign KEY (order_id) references orders (id) on delete CASCADE,
+  constraint order_items_product_id_fkey foreign KEY (product_id) references products (id)
+) TABLESPACE pg_default;
+
+This table has two RLS policies Users can create their own order items and Users can view their own order items
+
+
+
+
+
+
+create table public.lessons (
+  id serial not null,
+  course_id integer null,
+  title character varying(255) not null,
+  description text null,
+  estimated_time integer null,
+  step_order integer null default 1,
+  topics jsonb null,
+  constraint lessons_pkey primary key (id),
+  constraint lessons_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+This table has no RLS policies.
+
+
+
+
+create table public.forum_topics (
+  id uuid not null default gen_random_uuid (),
+  title text not null,
+  user_id uuid not null,
+  category_id uuid not null,
+  pinned boolean null default false,
+  views integer null default 0,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint forum_topics_pkey primary key (id),
+  constraint forum_topics_category_id_fkey foreign KEY (category_id) references forum_categories (id) on delete CASCADE,
+  constraint forum_topics_user_id_fkey foreign KEY (user_id) references profiles (id)
+) TABLESPACE pg_default;
+
+create trigger update_forum_topics_updated_at BEFORE
+update on forum_topics for EACH row
+execute FUNCTION update_modified_column ();
+
+
+This table has 3 RLS policies Authenticated users can create forum topics, Everyone can view forum topics and Users can update their own forum topics.
+
+
+
+
+create table public.forum_posts (
+  id uuid not null default gen_random_uuid (),
+  topic_id uuid not null,
+  user_id uuid not null,
+  content text not null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint forum_posts_pkey primary key (id),
+  constraint forum_posts_topic_id_fkey foreign KEY (topic_id) references forum_topics (id) on delete CASCADE,
+  constraint forum_posts_user_id_fkey foreign KEY (user_id) references profiles (id)
+) TABLESPACE pg_default;
+
+create trigger update_forum_posts_updated_at BEFORE
+update on forum_posts for EACH row
+execute FUNCTION update_modified_column ();
+
+
+This table has 3 RLS policies Authenticated users can create forum posts, Everyone can view forum posts and Users can update their own forum posts.
+
+
+
+create table public.forum_categories (
+  id uuid not null default gen_random_uuid (),
+  name text not null,
+  description text null,
+  slug text not null,
+  created_at timestamp with time zone null default now(),
+  constraint forum_categories_pkey primary key (id),
+  constraint forum_categories_slug_key unique (slug)
+) TABLESPACE pg_default;
+
+This table has 2 RLS policies, Everyone can view forum categories and Only admins can modify forum categories.
+
+
+
+
+create table public.courses (
+  id serial not null,
+  title character varying(255) not null,
+  slug character varying(255) not null,
+  description text null,
+  hero_image text null,
+  category character varying(50) null,
+  level character varying(50) null,
+  estimated_hours integer null,
+  requirements text null,
+  skills text null,
+  students integer null default 0,
+  rating numeric(2, 1) null default 0,
+  featured boolean null default false,
+  created_at timestamp without time zone null default now(),
+  constraint courses_pkey primary key (id),
+  constraint courses_slug_key unique (slug)
+) TABLESPACE pg_default;
+
+This table has no RLS policy.
+
+
+
+
+create table public.course_progress (
+  id uuid not null default gen_random_uuid (),
+  enrollment_id uuid not null,
+  progress_percentage integer null default 0,
+  last_accessed timestamp with time zone null default now(),
+  completed boolean null default false,
+  completed_at timestamp with time zone null,
+  updated_at timestamp with time zone null default now(),
+  constraint course_progress_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create trigger update_course_progress_updated_at BEFORE
+update on course_progress for EACH row
+execute FUNCTION update_modified_column ();
+
+This table has 4 RLS policies, Users can insert their own progress, Users can update progress via enrollment, Users can update their own progress and Users can view their own progress.
+
+
+
+
+
+
+create table public.course_enrollments (
+  id uuid not null default gen_random_uuid (),
+  user_id uuid not null,
+  course_id integer not null,
+  enrolled_at timestamp with time zone null default now(),
+  constraint course_enrollments_pkey primary key (id),
+  constraint course_enrollments_user_id_course_id_key unique (user_id, course_id),
+  constraint course_enrollments_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE,
+  constraint course_enrollments_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+This table has 2 RLS policies, Users can enroll in courses and Users can view their own enrollments.

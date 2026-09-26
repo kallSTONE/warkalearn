@@ -1,0 +1,18 @@
+{
+    "name": "hooks",
+    "path": "c:\\Users\\Kalab\\Desktop\\Legal-Training\\hooks",
+    "type": "directory",
+    "children": [
+        {
+            "name": "use-toast.ts",
+            "type": "file"
+        }
+    ],
+    "metadata": {
+        "generated": "2025-12-06T06:55:07.066Z",
+        "generator": "FileTree Pro Extension",
+        "version": "0.2.0",
+        "showIcons": false,
+        "maxDepth": 10
+    }
+}

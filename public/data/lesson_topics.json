@@ -1,0 +1,92 @@
+[
+  {
+    "Marketing Basics": "Introduction to core marketing principles, audience targeting, and brand positioning.",
+    "Terminology": "Comprehensive explanations of key marketing terms and concepts.",
+    "Platforms": "Overview of major digital marketing platforms and how to leverage them effectively."
+  },
+  {
+    "On-Page SEO": "Techniques to optimize website content, meta tags, and structure for better search visibility.",
+    "Off-Page SEO": "Strategies focused on backlinks, domain authority, and external factors that influence rankings.",
+    "Tools": "Essential SEO tools for keyword research, site audits, and performance tracking."
+  },
+  {
+    "Facebook": "Understanding Facebook marketing strategies, ads, and audience engagement tactics.",
+    "Instagram": "Best practices for creating visually engaging content and leveraging Instagram Stories and Reels.",
+    "LinkedIn": "Using LinkedIn for professional networking, brand growth, and B2B marketing."
+  },
+  {
+    "HTML Tags": "Introduction to basic and semantic HTML tags used to structure web content.",
+    "CSS Selectors": "Explanation of different CSS selectors and how they target elements for styling.",
+    "Box Model": "Understanding how margins, borders, padding, and content define element layout."
+  },
+  {
+    "Variables": "Overview of variables, data types, and scope in programming.",
+    "Functions": "Defining and calling functions to organize and reuse code efficiently.",
+    "DOM Manipulation": "Interacting with and updating web page elements dynamically using JavaScript."
+  },
+  {
+    "Components": "Introduction to building reusable UI components in modern frameworks like React.",
+    "Props": "Passing and managing data between components using props.",
+    "State": "Using state to track and update dynamic data within applications."
+  },
+  {
+    "Management Basics": "Fundamental principles of management and organizational structure.",
+    "Business Functions": "Overview of core business functions such as marketing, finance, and operations.",
+    "Decision Making": "Approaches and models for making effective managerial decisions."
+  },
+  {
+    "Leadership Styles": "Exploring various leadership approaches and when to apply them.",
+    "Strategic Planning": "Developing long-term strategies aligned with organizational goals.",
+    "Team Motivation": "Techniques to inspire, engage, and retain high-performing teams."
+  },
+  {
+    "Budgeting": "Creating and managing budgets to allocate resources efficiently.",
+    "Resource Management": "Optimizing human and material resources to achieve project goals.",
+    "Process Optimization": "Analyzing and improving workflows for greater efficiency and productivity."
+  },
+  {
+    "Design Principles": "Core principles of visual design, including balance, contrast, and hierarchy for effective communication.",
+    "Color Theory": "Understanding color relationships, harmony, and emotional impact in design.",
+    "Typography": "Exploring font selection, readability, and typographic hierarchy in visual compositions."
+  },
+  {
+    "Photoshop Basics": "Introduction to Photoshop tools, interface, and essential image editing techniques.",
+    "Illustrator Basics": "Overview of Illustrator for creating vector graphics and scalable artwork.",
+    "Layer Management": "Organizing and controlling layers to maintain a clean and efficient workflow."
+  },
+  {
+    "Branding": "Developing a strong brand identity through visuals, tone, and consistent messaging.",
+    "Poster Design": "Techniques for creating impactful and visually engaging posters.",
+    "Social Media Graphics": "Designing compelling graphics tailored for various social media platforms."
+  },
+  {
+    "Python Basics": "Introduction to Python syntax, data types, and fundamental programming concepts.",
+    "NumPy": "Using NumPy for efficient numerical computations and array manipulations.",
+    "Pandas": "Working with structured data using Pandas for analysis and transformation."
+  },
+  {
+    "Handling Missing Data": "Techniques for identifying, cleaning, and imputing missing data in datasets.",
+    "Filtering": "Applying conditions to select relevant data for analysis and insights.",
+    "Merging Datasets": "Combining multiple data sources for comprehensive data analysis."
+  },
+  {
+    "Matplotlib": "Creating static, animated, and interactive plots for data visualization in Python.",
+    "Seaborn": "Utilizing Seaborn for advanced and aesthetically pleasing statistical visualizations.",
+    "Plotting Techniques": "Best practices for presenting data clearly through effective chart design."
+  },
+  {
+    "Project Life Cycle": "Understanding the stages of a project from initiation to closure.",
+    "Stakeholder Management": "Identifying, analyzing, and engaging stakeholders throughout the project.",
+    "Project Scope": "Defining project objectives, deliverables, and boundaries for successful execution."
+  },
+  {
+    "Gantt Charts": "Using Gantt charts to visualize project timelines and task dependencies.",
+    "Risk Assessment": "Identifying potential risks and evaluating their impact on project outcomes.",
+    "Contingency Planning": "Developing backup plans to mitigate and manage project uncertainties."
+  },
+  {
+    "Scrum Framework": "Exploring Scrum roles, events, and artifacts for agile project management.",
+    "Kanban": "Implementing Kanban boards to visualize workflow and improve efficiency.",
+    "PM Certification Tips": "Guidance and study strategies for earning professional project management certifications."
+  }
+]

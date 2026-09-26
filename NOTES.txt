@@ -1,0 +1,11 @@
+
+testimonies section with videos
+video of creators talking alternating (Yonas Moh, Mikiyas, and others with good social media following)
+
+
+
+
+DONE : 
+better style the button (Join Khlix)
+mute unmute text on the custom video button
+auto scroll carousel with "our instructors are trusted by"

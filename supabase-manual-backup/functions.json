@@ -1,0 +1,38 @@
+[
+  {
+    "proname": "handle_new_user"
+  },
+  {
+    "proname": "is_admin"
+  },
+  {
+    "proname": "propagate_lesson_course_to_quizzes"
+  },
+  {
+    "proname": "set_quizzes_course_id"
+  },
+  {
+    "proname": "update_course_progress_for_quiz"
+  },
+  {
+    "proname": "update_course_progress_updated_at"
+  },
+  {
+    "proname": "update_course_review_notes_updated_at"
+  },
+  {
+    "proname": "update_forum_posts_updated_at"
+  },
+  {
+    "proname": "update_forum_topics_updated_at"
+  },
+  {
+    "proname": "update_modified_at"
+  },
+  {
+    "proname": "update_profiles_updated_at"
+  },
+  {
+    "proname": "update_site_settings_updated_at"
+  }
+]

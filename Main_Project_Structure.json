@@ -1,0 +1,685 @@
+{
+    "name": "app",
+    "path": "c:\\Users\\Kalab\\Desktop\\Legal-Training\\app",
+    "type": "directory",
+    "children": [
+        {
+            "name": "about",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "admin",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "analytics",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "articles",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "loading.tsx",
+                            "type": "file"
+                        },
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "courses",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "[id]",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "edit",
+                                    "type": "folder",
+                                    "children": [
+                                        {
+                                            "name": "page.tsx",
+                                            "type": "file"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "page.tsx",
+                                    "type": "file"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "new",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "page.tsx",
+                                    "type": "file"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "loading.tsx",
+                            "type": "file"
+                        },
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "dashboard",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "students",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "loading.tsx",
+                            "type": "file"
+                        },
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                },
+                {
+                    "name": "layout.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "api",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "admin",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "courses",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "route.ts",
+                                    "type": "file"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "download",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "route.ts",
+                            "type": "file"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "blog",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "[id]",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "page.tsx",
+                            "type": "file"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "community",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "dashboard",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "learn",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "course",
+                    "type": "folder",
+                    "children": [
+                        {
+                            "name": "[slug]",
+                            "type": "folder",
+                            "children": [
+                                {
+                                    "name": "enroll",
+                                    "type": "folder",
+                                    "children": [
+                                        {
+                                            "name": "EnrollClient.tsx",
+                                            "type": "file"
+                                        },
+                                        {
+                                            "name": "page.tsx",
+                                            "type": "file"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "lesson",
+                                    "type": "folder",
+                                    "children": [
+                                        {
+                                            "name": "[lesson_number]",
+                                            "type": "folder",
+                                            "children": [
+                                                {
+                                                    "name": "page.tsx",
+                                                    "type": "file"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "page.tsx",
+                                    "type": "file"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "login",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "register",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "resources",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "shop",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "page.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "globals.css",
+            "type": "file"
+        },
+        {
+            "name": "layout.tsx",
+            "type": "file"
+        },
+        {
+            "name": "page.tsx",
+            "type": "file"
+        },
+        {
+            "name": "theme-sets.css",
+            "type": "file"
+        }
+    ],
+    "metadata": {
+        "generated": "2025-12-06T06:50:25.479Z",
+        "generator": "FileTree Pro Extension",
+        "version": "0.2.0",
+        "showIcons": false,
+        "maxDepth": 10
+    }
+}
+
+
+{
+    "name": "components",
+    "path": "c:\\Users\\Kalab\\Desktop\\Legal-Training\\components",
+    "type": "directory",
+    "children": [
+        {
+            "name": "course",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "CourseDetails.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "LessonCarousel.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "home",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "article-grid.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "course-carousel.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "newsletter-signup.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "success-stories.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "layout",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "footer.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "header.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "lesson",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "LessonContent.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "providers",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "supabase-provider.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "ui",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "accordion.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "alert-dialog.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "alert.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "aspect-ratio.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "avatar.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "badge.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "breadcrumb.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "button.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "calendar.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "card.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "carousel.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "chart.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "checkbox.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "collapsible.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "command.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "context-menu.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "dialog.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "drawer.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "dropdown-menu.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "form.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "hover-card.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "input-otp.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "input.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "label.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "menubar.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "navigation-menu.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "pagination.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "popover.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "progress.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "radio-group.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "resizable.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "scroll-area.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "select.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "separator.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "sheet.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "skeleton.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "slider.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "sonner.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "switch.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "table.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "tabs.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "textarea.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "toast.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "toaster.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "toggle-group.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "toggle.tsx",
+                    "type": "file"
+                },
+                {
+                    "name": "tooltip.tsx",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "chart-card.tsx",
+            "type": "file"
+        },
+        {
+            "name": "data-table.tsx",
+            "type": "file"
+        },
+        {
+            "name": "lesson-content.tsx",
+            "type": "file"
+        },
+        {
+            "name": "lesson-sidebar.tsx",
+            "type": "file"
+        },
+        {
+            "name": "mode-toggle.tsx",
+            "type": "file"
+        },
+        {
+            "name": "page-header.tsx",
+            "type": "file"
+        },
+        {
+            "name": "sidebar.tsx",
+            "type": "file"
+        },
+        {
+            "name": "stats-card.tsx",
+            "type": "file"
+        },
+        {
+            "name": "tesfa-assistant.tsx",
+            "type": "file"
+        },
+        {
+            "name": "theme-provider.tsx",
+            "type": "file"
+        },
+        {
+            "name": "topbar.tsx",
+            "type": "file"
+        },
+        {
+            "name": "user-nav.tsx",
+            "type": "file"
+        }
+    ],
+    "metadata": {
+        "generated": "2025-12-06T06:53:16.431Z",
+        "generator": "FileTree Pro Extension",
+        "version": "0.2.0",
+        "showIcons": false,
+        "maxDepth": 10
+    }
+}
+
+
+{
+    "name": "hooks",
+    "path": "c:\\Users\\Kalab\\Desktop\\Legal-Training\\hooks",
+    "type": "directory",
+    "children": [
+        {
+            "name": "use-toast.ts",
+            "type": "file"
+        }
+    ],
+    "metadata": {
+        "generated": "2025-12-06T06:55:07.066Z",
+        "generator": "FileTree Pro Extension",
+        "version": "0.2.0",
+        "showIcons": false,
+        "maxDepth": 10
+    }
+}
+
+
+
+{
+    "name": "lib",
+    "path": "c:\\Users\\Kalab\\Desktop\\Legal-Training\\lib",
+    "type": "directory",
+    "children": [
+        {
+            "name": "supabase.ts",
+            "type": "file"
+        },
+        {
+            "name": "types.ts",
+            "type": "file"
+        },
+        {
+            "name": "utils.ts",
+            "type": "file"
+        }
+    ],
+    "metadata": {
+        "generated": "2025-12-06T06:55:38.719Z",
+        "generator": "FileTree Pro Extension",
+        "version": "0.2.0",
+        "showIcons": false,
+        "maxDepth": 10
+    }
+}
+
+
