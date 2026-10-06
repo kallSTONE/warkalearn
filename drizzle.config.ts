@@ -1,5 +1,8 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
 import { defineConfig } from 'drizzle-kit'
+
+dotenv.config({ path: '.env.local' })
+dotenv.config()
 
 export default defineConfig({
   // Where your schema lives
