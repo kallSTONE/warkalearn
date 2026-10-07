@@ -13,8 +13,8 @@ export interface Creator {
 export const creators: Creator[] = [
   {
     id: 1,   
-    slug: 'samuel',
-    name: 'Warka Learn Instructor Team',
+    slug: 'Daniel',
+    name: 'Warka Learn Instructor',
     avatar: '/assets/images/creator-samuel.jpg',
     bio: 'A team of experienced instructors focused on practical skills, mentorship, and real-world outcomes.',
     niche: 'Tech • Language • Business Skills',
