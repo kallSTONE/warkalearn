@@ -40,7 +40,7 @@ function mapInlineError(rawMessage: string, fallback: string, t: (key: string, f
 export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { supabase, signInWithGoogle } = useSupabase()
+  const { signUp, signInWithGoogle } = useSupabase()
   const { t } = useLanguage()
 
   const [fullName, setFullName] = useState('')
@@ -141,19 +141,8 @@ export default function RegisterPage() {
       }
     }
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        data: metadata,
-      },
-    })
-
-    if (signUpError) {
-      throw signUpError
-    }
-
-    router.push(`/register/check-email?email=${encodeURIComponent(normalizedEmail)}`)
+    await signUp(normalizedEmail, password, metadata)
+    router.push('/dashboard')
   }
 
   const handleSubmit = async (event: React.FormEvent) => {

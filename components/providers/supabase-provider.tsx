@@ -1,13 +1,9 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
-
-/* -------------------------------------------------------------------------- */
-/* Types                                                                      */
-/* -------------------------------------------------------------------------- */
+import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, getSession } from 'next-auth/react'
 
 type UserRole = 'lawyer' | 'mentor' | 'admin' | 'reviewer'
 
@@ -33,26 +29,18 @@ type SupabaseContextType = {
   signOut: () => Promise<void>
 }
 
-/* -------------------------------------------------------------------------- */
-/* Context                                                                     */
-/* -------------------------------------------------------------------------- */
-
 const SupabaseContext = createContext<SupabaseContextType>({
   supabase,
   user: null,
   loading: true,
-  signIn: async () => { },
-  signInWithPhone: async () => { },
-  signUp: async () => { },
-  signInWithGoogle: async () => { },
-  signOut: async () => { },
+  signIn: async () => {},
+  signInWithPhone: async () => {},
+  signUp: async () => {},
+  signInWithGoogle: async () => {},
+  signOut: async () => {},
 })
 
 export const useSupabase = () => useContext(SupabaseContext)
-
-/* -------------------------------------------------------------------------- */
-/* Provider                                                                    */
-/* -------------------------------------------------------------------------- */
 
 export function SupabaseProvider({
   children,
@@ -63,119 +51,47 @@ export function SupabaseProvider({
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const claimPendingReferral = async (session: Session) => {
-    const metadataCode =
-      typeof session.user.user_metadata?.referral_code === 'string'
-        ? session.user.user_metadata.referral_code.trim().toUpperCase()
-        : null
-
-    const localStorageCode =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem('pendingReferralCode')?.trim().toUpperCase() ?? null
-        : null
-
-    const referralCode = metadataCode ?? localStorageCode
-
-    if (!referralCode) {
-      return
-    }
-
+  const refreshUser = useCallback(async () => {
     try {
-      const response = await fetch('/api/referrals/claim', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ referralCode }),
-      })
-
-      const payload = await response.json().catch(() => ({}))
-      const claimStatus =
-        typeof payload?.status === 'string' ? payload.status : null
-
-      if (!response.ok) {
-        // These statuses are terminal and should not be retried on every login.
-        if (
-          typeof window !== 'undefined' &&
-          (claimStatus === 'already_claimed' ||
-            claimStatus === 'invalid_code' ||
-            claimStatus === 'self_referral')
-        ) {
-          window.localStorage.removeItem('pendingReferralCode')
-        }
-
-        throw new Error(String(payload?.error ?? 'Unable to claim referral.'))
+      const session = await getSession()
+      if (session?.user?.id) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? undefined,
+          user_metadata: {
+            full_name: (session.user as any).fullName ?? session.user.name ?? '',
+            avatar_url: (session.user as any).avatarUrl ?? session.user.image ?? '',
+            role: ((session.user as any).role as UserRole) ?? 'lawyer',
+          },
+        })
+      } else {
+        setUser(null)
       }
-
-      if (claimStatus !== 'claimed') {
-        throw new Error(`Unexpected referral claim status: ${claimStatus ?? 'unknown'}`)
-      }
-
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('pendingReferralCode')
-      }
-    } catch (error: any) {
-      console.error('Referral claim failed:', error)
-    }
-  }
-
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
-        if (session?.user) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('role, avatar_url, full_name')
-            .eq('id', session.user.id)
-            .single()
-
-          if (error) {
-            console.error('Failed to load profile:', error)
-          }
-
-          setUser({
-            id: session.user.id,
-            email: session.user.email ?? undefined,
-            user_metadata: {
-              full_name:
-                profile?.full_name ??
-                session.user.user_metadata?.full_name,
-              avatar_url:
-                profile?.avatar_url ??
-                session.user.user_metadata?.avatar_url,
-              role: (profile?.role as UserRole) ?? 'lawyer',
-              referral_code: session.user.user_metadata?.referral_code,
-            },
-          })
-
-          void claimPendingReferral(session)
-        } else {
-          setUser(null)
-        }
-
-        setLoading(false)
-      }
-    )
-
-    return () => {
-      subscription.unsubscribe()
+    } catch (err) {
+      console.error('Failed to load session:', err)
+      setUser(null)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  /* ------------------------------------------------------------------------ */
-  /* Auth Helpers                                                             */
-  /* ------------------------------------------------------------------------ */
+  useEffect(() => {
+    void refreshUser()
+  }, [refreshUser])
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
+      const res = await nextAuthSignIn('credentials', {
+        identifier: email,
         password,
+        redirect: false,
       })
-      if (error) throw error
+
+      if (res?.error) {
+        throw new Error('Invalid email/phone or password.')
+      }
+
+      await refreshUser()
 
       toast({
         title: 'Welcome back!',
@@ -187,25 +103,48 @@ export function SupabaseProvider({
         description: error.message ?? 'Failed to sign in.',
         variant: 'destructive',
       })
+      throw error
     }
   }
 
   const signUp = async (
     email: string,
     password: string,
-    metadata: object = {}
+    metadata: any = {}
   ) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: metadata },
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: email,
+          password,
+          fullName: metadata?.full_name,
+          referralCode: metadata?.referral_code,
+        }),
       })
-      if (error) throw error
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create account.')
+      }
+
+      // Automatically sign in with credentials
+      const signInRes = await nextAuthSignIn('credentials', {
+        identifier: email,
+        password,
+        redirect: false,
+      })
+
+      if (signInRes?.error) {
+        throw new Error('Account created, but automatic sign in failed. Please log in.')
+      }
+
+      await refreshUser()
 
       toast({
         title: 'Account created',
-        description: 'Please check your email to confirm your account.',
+        description: 'Welcome to Warka Learn!',
       })
     } catch (error: any) {
       toast({
@@ -213,50 +152,23 @@ export function SupabaseProvider({
         description: error.message ?? 'Failed to create account.',
         variant: 'destructive',
       })
+      throw error
     }
   }
 
   const signInWithPhone = async (phone: string, password: string) => {
     try {
-      const { error: phoneSignInError } = await supabase.auth.signInWithPassword({
-        phone,
+      const res = await nextAuthSignIn('credentials', {
+        identifier: phone,
         password,
+        redirect: false,
       })
 
-      if (phoneSignInError) {
-        const isPhoneLoginDisabled = (phoneSignInError.message ?? '')
-          .toLowerCase()
-          .includes('phone logins are disabled')
-
-        if (!isPhoneLoginDisabled) {
-          throw phoneSignInError
-        }
-
-        const prepareResponse = await fetch('/api/auth/phone/prepare-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone }),
-        })
-
-        const preparePayload =
-          ((await prepareResponse.json().catch(() => ({}))) as {
-            loginEmail?: string
-            error?: string
-          }) ?? {}
-
-        if (!prepareResponse.ok || typeof preparePayload.loginEmail !== 'string') {
-          throw new Error(preparePayload.error ?? 'Failed to prepare phone login.')
-        }
-
-        const { error: emailSignInError } = await supabase.auth.signInWithPassword({
-          email: preparePayload.loginEmail,
-          password,
-        })
-
-        if (emailSignInError) {
-          throw emailSignInError
-        }
+      if (res?.error) {
+        throw new Error('Invalid phone number or password.')
       }
+
+      await refreshUser()
 
       toast({
         title: 'Welcome back!',
@@ -274,26 +186,11 @@ export function SupabaseProvider({
 
   const signInWithGoogle = async () => {
     try {
-      if (typeof window === 'undefined') {
-        return
-      }
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            prompt: 'select_account',
-          },
-        },
-      })
-
-      if (error) throw error
+      await nextAuthSignIn('google', { redirect: true })
     } catch (error: any) {
       toast({
         title: 'Google sign-in error',
-        description:
-          error.message ?? 'Failed to continue with Google.',
+        description: error.message ?? 'Failed to continue with Google.',
         variant: 'destructive',
       })
     }
@@ -301,7 +198,7 @@ export function SupabaseProvider({
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      await nextAuthSignOut({ redirect: false })
       setUser(null)
 
       toast({
@@ -316,8 +213,6 @@ export function SupabaseProvider({
       })
     }
   }
-
-  /* ------------------------------------------------------------------------ */
 
   return (
     <SupabaseContext.Provider

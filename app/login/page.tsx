@@ -41,7 +41,7 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { startLoading } = useRouteLoading()
-  const { user, loading, supabase, signInWithPhone, signInWithGoogle } = useSupabase()
+  const { user, loading, signIn, signInWithPhone, signInWithGoogle } = useSupabase()
   const { t } = useLanguage()
 
   const [identifier, setIdentifier] = useState(searchParams.get('phone') ?? '')
@@ -101,14 +101,7 @@ export default function LoginPage() {
         return
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: trimmedIdentifier.toLowerCase(),
-        password,
-      })
-
-      if (signInError) {
-        throw signInError
-      }
+      await signIn(trimmedIdentifier.toLowerCase(), password)
     } catch (loginError: any) {
       setError(mapInlineError(loginError?.message ?? '', t('auth.login.error.signInFailed', 'Failed to sign in'), t))
     } finally {

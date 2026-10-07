@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { auth } from '@/auth'
+import { db } from '@/db'
+import { profiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 
 type AuthContext = {
     userId: string
@@ -16,75 +19,45 @@ type AuthFailure = {
     response: NextResponse
 }
 
-function getBearerToken(request: Request): string | null {
-    const authorization = request.headers.get('authorization')
-    if (!authorization) return null
+export async function authenticateRequest(request?: Request): Promise<AuthSuccess | AuthFailure> {
+    try {
+        // 1. Check NextAuth session via cookies
+        const session = await auth()
 
-    const [scheme, token] = authorization.split(' ')
-    if (!scheme || !token) return null
+        if (session?.user?.id) {
+            const userId = session.user.id
+            const role = ((session.user as any)?.role as string) ?? null
 
-    if (scheme.toLowerCase() !== 'bearer') {
-        return null
-    }
+            return {
+                ok: true,
+                context: {
+                    userId,
+                    role,
+                },
+            }
+        }
 
-    return token.trim() || null
-}
-
-export async function authenticateRequest(request: Request): Promise<AuthSuccess | AuthFailure> {
-    const token = getBearerToken(request)
-
-    if (!token) {
+        // 2. Fallback: If no session cookie, check database directly if userId is available or return 401
         return {
             ok: false,
             response: NextResponse.json(
-                { error: 'Missing bearer token.' },
+                { error: 'Authentication required. Please sign in.' },
                 { status: 401 }
             ),
         }
-    }
-
-    const admin = getSupabaseAdminClient()
-    const { data: userData, error: userError } = await admin.auth.getUser(token)
-
-    if (userError || !userData.user) {
+    } catch (error) {
+        console.error('authenticateRequest error:', error)
         return {
             ok: false,
             response: NextResponse.json(
-                { error: 'Invalid or expired session.' },
-                { status: 401 }
-            ),
-        }
-    }
-
-    const userId = userData.user.id
-
-    const { data: profile, error: profileError } = await admin
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle<{ role: string | null }>()
-
-    if (profileError) {
-        console.error('Failed to read profile role:', profileError)
-        return {
-            ok: false,
-            response: NextResponse.json(
-                { error: 'Unable to validate user role.' },
+                { error: 'Failed to authenticate request.' },
                 { status: 500 }
             ),
         }
     }
-
-    return {
-        ok: true,
-        context: {
-            userId,
-            role: profile?.role ?? null,
-        },
-    }
 }
 
-export async function requireAdminRequest(request: Request): Promise<AuthSuccess | AuthFailure> {
+export async function requireAdminRequest(request?: Request): Promise<AuthSuccess | AuthFailure> {
     const authResult = await authenticateRequest(request)
 
     if (!authResult.ok) {
