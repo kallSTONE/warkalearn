@@ -219,7 +219,7 @@ export default function StudentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Students</h1>
-          <p className="text-muted-foreground mt-2">Manage student accounts and enrollments</p>
+          <p className="text-muted-foreground mt-2">Manage student's accounts and enrollments</p>
         </div>
         <Button className="gap-2 w-full sm:w-auto">
           <Plus size={20} />
@@ -232,7 +232,7 @@ export default function StudentsPage() {
         <Card className="bg-card">
           <CardContent className="pt-4 md:pt-6">
             <div className="text-center">
-              <p className="text-muted-foreground text-sm">Total Students</p>
+              <p className="text-muted-foreground text-sm">Total Student count</p>
               <p className="text-2xl md:text-3xl font-bold text-foreground mt-2">{studentStats.totalStudents}</p>
             </div>
           </CardContent>
