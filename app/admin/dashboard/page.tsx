@@ -600,7 +600,7 @@ export default function DashboardPage() {
           <Card className="bg-card border-border/80 shadow-sm">
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest platform activities</CardDescription>
+              <CardDescription>Latest activities</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
