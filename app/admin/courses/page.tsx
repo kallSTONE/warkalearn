@@ -264,7 +264,7 @@ export default function CoursesPage() {
       }
 
       // Success: show alert, update local list, close dialog
-      toast({ title: 'Deleted', description: 'Course removed.' })
+      toast({ title: 'Deleted', description: 'Course removed Permanently.' })
       setCourses((prev) => prev.filter((c) => c.id !== selectedCourse.id))
       setDeleteDialogOpen(false)
     } catch (e: any) {
