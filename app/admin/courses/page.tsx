@@ -294,7 +294,7 @@ export default function CoursesPage() {
               variant={activeTab === 'programs' ? 'default' : 'outline'}
               onClick={() => setActiveTab('programs')}
             >
-              Programs
+              Program Management
             </Button>
           </div>
 
