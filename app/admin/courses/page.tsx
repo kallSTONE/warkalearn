@@ -564,7 +564,7 @@ export default function CoursesPage() {
                 <TransitionLink href="/admin/courses/programs/new" className="no-underline">
                   <Button className="gap-2 hidden sm:inline-flex">
                     <Plus size={16} />
-                    New Program
+                    Creat New Program
                   </Button>
                 </TransitionLink>
               </div>
