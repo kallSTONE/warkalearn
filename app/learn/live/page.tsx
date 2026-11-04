@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { supabase } from "@/lib/supabase"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useLanguage } from "@/components/providers/language-provider"
 import { translate } from "@/lib/i18n"
@@ -62,7 +61,7 @@ export default function LiveClassesPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const focusSlug = searchParams.get("focus")
-  const { user, loading: authLoading, supabase: userClient } = useSupabase()
+  const { user, loading: authLoading } = useSupabase()
   const { locale } = useLanguage()
   const { toast } = useToast()
   const t = (key: string, fallback?: string) => translate(locale, key, fallback)
@@ -77,44 +76,27 @@ export default function LiveClassesPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
+      try {
+        const classRes = await fetch('/api/live-classes')
+        const classJson = await classRes.json()
+        setClasses((classJson?.data || []) as LiveClassRow[])
 
-      const { data: classData, error: classError } = await supabase
-        .from("live_classes")
-        .select(
-          "id, slug, title, description, instructor_name, instructor_avatar_url, cover_image_url, meeting_platform, meeting_url, start_at, end_at, timezone, price, currency, seats_total, status, registration_status"
-        )
-        .eq("status", "published")
-        .order("start_at", { ascending: true })
-
-      if (classError) {
-        console.error("Live classes load error:", classError)
-      }
-
-      setClasses((classData || []) as LiveClassRow[])
-
-      if (user) {
-        const { data: regData, error: regError } = await userClient
-          .from("live_class_registrations")
-          .select(
-            "id, live_class_id, amount_paid, payment_status, registration_status, live_classes(id, slug, title, start_at, meeting_platform, meeting_url, cover_image_url)"
-          )
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-
-        if (regError) {
-          console.error("Live registrations load error:", regError)
+        if (user) {
+          const regRes = await fetch('/api/live-classes/me')
+          const regJson = await regRes.json()
+          setRegistrations((regJson?.data || []) as LiveRegistrationRow[])
+        } else {
+          setRegistrations([])
         }
-
-        setRegistrations((regData || []) as LiveRegistrationRow[])
-      } else {
-        setRegistrations([])
+      } catch (err) {
+        console.error("Live classes load error:", err)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     load()
-  }, [user, userClient])
+  }, [user])
 
   useEffect(() => {
     if (!focusSlug || classes.length === 0 || authLoading) return
@@ -161,20 +143,10 @@ export default function LiveClassesPage() {
 
     setSubmitting(true)
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      const accessToken = session?.access_token
-      if (!accessToken) {
-        throw new Error(t('auth.sessionMissing', 'Please sign in again to continue.'))
-      }
-
       const response = await fetch(`/api/live-classes/${selectedClass.id}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           amount_paid: selectedClass.price,
@@ -194,14 +166,9 @@ export default function LiveClassesPage() {
       })
 
       setSelectedClass(null)
-      const { data: refreshed } = await userClient
-        .from("live_class_registrations")
-        .select(
-          "id, live_class_id, amount_paid, payment_status, registration_status, live_classes(id, slug, title, start_at, meeting_platform, meeting_url, cover_image_url)"
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-      setRegistrations((refreshed || []) as LiveRegistrationRow[])
+      const regRes = await fetch('/api/live-classes/me')
+      const regJson = await regRes.json()
+      setRegistrations((regJson?.data || []) as LiveRegistrationRow[])
     } catch (error: any) {
       toast({
         title: t('liveClasses.registerFailedTitle', 'Reservation failed'),

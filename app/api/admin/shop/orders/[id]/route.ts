@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import { shopOrders, shopOrderItems, profiles } from '@/db/schema'
 import { requireAdminRequest } from '@/lib/server/api-auth'
+import { asc, eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
-const ALLOWED_STATUSES = new Set(['paid', 'cancelled', 'refunded'])
+const ALLOWED_STATUSES = new Set(['paid', 'cancelled', 'refunded', 'delivered', 'pending'])
 
 type RouteContext = {
   params: {
@@ -19,48 +21,61 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!authResult.ok) return authResult.response
 
   try {
-    const admin = getSupabaseAdminClient()
     const { id } = params
 
-    const { data: order, error: orderError } = await admin
-      .from('shop_orders')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle()
-
-    if (orderError) {
-      console.error('Admin order detail error:', orderError)
-      return NextResponse.json({ error: 'Unable to load order.' }, { status: 500 })
-    }
+    const [order] = await db
+      .select()
+      .from(shopOrders)
+      .where(eq(shopOrders.id, id))
+      .limit(1)
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 })
     }
 
-    const [{ data: items, error: itemsError }, { data: profile, error: profileError }] = await Promise.all([
-      admin
-        .from('shop_order_items')
-        .select('*')
-        .eq('order_id', id)
-        .order('created_at', { ascending: true }),
-      admin
-        .from('profiles')
-        .select('id, full_name, role')
-        .eq('id', order.user_id)
-        .maybeSingle(),
+    const [items, [customer]] = await Promise.all([
+      db
+        .select()
+        .from(shopOrderItems)
+        .where(eq(shopOrderItems.orderId, id))
+        .orderBy(asc(shopOrderItems.createdAt)),
+      db
+        .select({
+          id: profiles.id,
+          full_name: profiles.fullName,
+          role: profiles.role,
+        })
+        .from(profiles)
+        .where(eq(profiles.id, order.userId))
+        .limit(1),
     ])
-
-    if (itemsError || profileError) {
-      console.error('Admin order linked detail error:', itemsError || profileError)
-      return NextResponse.json({ error: 'Unable to load order items.' }, { status: 500 })
-    }
 
     return NextResponse.json(
       {
         data: {
-          order,
-          items: items ?? [],
-          customer: profile ?? null,
+          order: {
+            id: order.id,
+            user_id: order.userId,
+            status: order.status,
+            payment_method: order.paymentMethod,
+            payment_reference: order.paymentReference,
+            currency: order.currency,
+            subtotal: Number(order.subtotal),
+            total_amount: Number(order.totalAmount),
+            created_at: order.createdAt?.toISOString(),
+            updated_at: order.updatedAt?.toISOString(),
+          },
+          items: items.map((it) => ({
+            id: it.id,
+            order_id: it.orderId,
+            product_id: it.productId,
+            product_name: it.productName,
+            unit_price: Number(it.unitPrice),
+            quantity: it.quantity,
+            line_total: Number(it.lineTotal),
+            created_at: it.createdAt?.toISOString(),
+          })),
+          customer: customer ?? null,
         },
       },
       { status: 200 }
@@ -83,22 +98,22 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Invalid status value.' }, { status: 400 })
     }
 
-    const admin = getSupabaseAdminClient()
-    const { data, error } = await admin
-      .from('shop_orders')
-      .update({ status })
-      .eq('id', params.id)
-      .select('*')
-      .maybeSingle()
+    const [updated] = await db
+      .update(shopOrders)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(shopOrders.id, params.id))
+      .returning()
 
-    if (error) {
-      console.error('Admin order status update error:', error)
-      return NextResponse.json({ error: 'Unable to update order status.' }, { status: 500 })
+    if (!updated) {
+      return NextResponse.json({ error: 'Order not found.' }, { status: 404 })
     }
 
-    return NextResponse.json({ data }, { status: 200 })
+    return NextResponse.json({ data: updated }, { status: 200 })
   } catch (error: any) {
-    console.error('Admin order PATCH route error:', error)
-    return NextResponse.json({ error: error?.message ?? 'Unable to update order.' }, { status: 500 })
+    console.error('Admin order status update error:', error)
+    return NextResponse.json({ error: error?.message ?? 'Unable to update order status.' }, { status: 500 })
   }
 }

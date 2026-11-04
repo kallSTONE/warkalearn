@@ -71,17 +71,18 @@ export default function CoursesPage() {
   useEffect(() => {
     const loadCourses = async () => {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id, title, slug, category, level, is_paid, price, students, rating, created_at')
-        .order('created_at', { ascending: false })
-
-      setLoading(false)
-      if (error) {
-        toast({ title: 'Error', description: error.message })
-        return
+      try {
+        const res = await fetch('/api/admin/courses', { cache: 'no-store' })
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data?.error || 'Failed to load courses')
+        }
+        setCourses(Array.isArray(data) ? data : [])
+      } catch (err: any) {
+        toast({ title: 'Error', description: err.message })
+      } finally {
+        setLoading(false)
       }
-      setCourses(data || [])
     }
 
     loadCourses()
@@ -97,17 +98,18 @@ export default function CoursesPage() {
   useEffect(() => {
     const loadPrograms = async () => {
       setProgramLoading(true)
-      const { data, error } = await supabase
-        .from('programs')
-        .select('id, title, slug, status, price, updated_at, created_at')
-        .order('created_at', { ascending: false })
-
-      setProgramLoading(false)
-      if (error) {
-        toast({ title: 'Error', description: error.message })
-        return
+      try {
+        const res = await fetch('/api/admin/programs', { cache: 'no-store' })
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data?.error || 'Failed to load programs')
+        }
+        setPrograms(Array.isArray(data) ? data : [])
+      } catch (err: any) {
+        toast({ title: 'Error', description: err.message })
+      } finally {
+        setProgramLoading(false)
       }
-      setPrograms(data || [])
     }
 
     loadPrograms()

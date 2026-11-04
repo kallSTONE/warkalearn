@@ -440,80 +440,41 @@ export default function NewCoursePage() {
                 price: isPaid ? 3000 : null,
             }
 
-            const { data: courseData, error: courseError } = await supabase
-                .from('courses')
-                .insert(coursePayload)
-                .select('id, slug')
-                .limit(1)
-
-            if (courseError || !courseData || courseData.length === 0) {
-                throw courseError || new Error('Failed to insert course')
-            }
-
-            const courseId = courseData[0].id
-
-            const introSampleUrl = 'https://www.youtube.com/watch?v=8hNdFWcF2Sc'
-
-            const { error: introError } = await supabase
-                .from('course_media')
-                .insert({
-                    course_id: courseId,
-                    type: 'intro',
-                    provider: 'youtube',
-                    url: introSampleUrl,
-                })
-
-            if (introError) throw introError
-
+            const introSampleUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
             const lessonsPayload = [
                 {
-                    course_id: courseId,
-                    title: 'check check',
-                    description: 'check description one',
-                    estimated_time: 15,
-                    step_order: 1,
-                    topics: { intro: 'check', basics: 'check' },
-                    video_url: 'https://www.youtube.com/watch?v=8hNdFWcF2Sc',
-                },
-                {
-                    course_id: courseId,
-                    title: 'check check',
-                    description: 'check description two',
-                    estimated_time: 20,
-                    step_order: 2,
-                    topics: { practice: 'check', summary: 'check' },
-                    video_url: 'https://www.youtube.com/watch?v=8hNdFWcF2Sc',
-                },
+                    title: 'Sample Lesson 1',
+                    slug: 'sample-lesson-1',
+                    lesson_number: 1,
+                    video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                    duration: 600,
+                    content: 'Lesson content overview',
+                }
             ]
 
-            const { data: insertedLessons, error: lessonsError } = await supabase
-                .from('lessons')
-                .insert(lessonsPayload)
-                .select('id, step_order')
-
-            if (lessonsError) throw lessonsError
-
-            const downloadsPayload: any[] = []
-            if (insertedLessons && insertedLessons.length > 0) {
-                insertedLessons.forEach((lessonRow: any) => {
-                    const lessonIndex = lessonRow.step_order - 1
-                    const defaultDownload = {
-                        lesson_id: lessonRow.id,
-                        title: 'check download',
-                        description: 'check file for lesson',
-                        file_url: 'https://example.com/check.pdf',
-                        file_type: 'pdf',
-                        file_size: 1024,
-                    }
-                    downloadsPayload.push(defaultDownload)
-                })
-            }
-
-            if (downloadsPayload.length > 0) {
-                const { error: downloadsError } = await supabase
-                    .from('lesson_downloads')
-                    .insert(downloadsPayload)
-                if (downloadsError) throw downloadsError
+            const res = await fetch('/api/admin/courses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...coursePayload,
+                    intro_video_url: introSampleUrl,
+                    lessons: lessonsPayload.map((l: any) => ({
+                        ...l,
+                        downloads: [
+                            {
+                                title: 'check download',
+                                description: 'check file for lesson',
+                                file_url: 'https://example.com/check.pdf',
+                                file_type: 'pdf',
+                                file_size: 1024,
+                            }
+                        ]
+                    })),
+                }),
+            })
+            const resData = await res.json()
+            if (!res.ok) {
+                throw new Error(resData?.error || 'Failed to create sample course')
             }
 
             toast({ title: 'Check course created', description: 'Created course "check check" with sample lessons.' })
@@ -564,99 +525,39 @@ export default function NewCoursePage() {
                 price: Boolean(isPaid) ? parsedPrice : null,
             }
 
-            // Insert course
-            const { data: courseData, error: courseError } = await supabase
-                .from('courses')
-                .insert(coursePayload)
-                .select('id, slug')
-                .limit(1)
-
-            if (courseError || !courseData || courseData.length === 0) {
-                throw courseError || new Error('Failed to insert course')
-            }
-
-            const courseId = courseData[0].id
-
             const trimmedIntro = introVideoUrl.trim()
-            if (trimmedIntro) {
-                const { error: introError } = await supabase
-                    .from('course_media')
-                    .insert({
-                        course_id: courseId,
-                        type: 'intro',
-                        provider: 'youtube',
-                        url: trimmedIntro,
-                    })
-
-                if (introError) throw introError
-            }
-
-
-            // Prepare lessons
             const lessonsPayload = lessons.map((l, idx) => {
                 const topicObject: Record<string, string> = {}
                 l.topics.forEach(t => {
-                    if (t.key.trim() !== "") {
+                    if (t.key.trim() !== '') {
                         topicObject[t.key] = t.value
                     }
                 })
 
                 return {
-                    course_id: courseId,
                     title: l.title,
                     description: l.description,
                     estimated_time: Number(l.time) || null,
                     step_order: idx + 1,
                     topics: topicObject,
-                    video_url: l.video_url
+                    video_url: l.video_url,
+                    downloads: l.downloads,
                 }
             })
 
-            // Insert lessons and RETURN their IDs
-            const { data: insertedLessons, error: lessonsError } = await supabase
-                .from('lessons')
-                .insert(lessonsPayload)
-                .select('id, step_order')
-
-            if (lessonsError) throw lessonsError
-            if (!insertedLessons) throw new Error("No lessons returned from insert")
-
-
-            const downloadsPayload: any[] = []
-
-            insertedLessons.forEach((lessonRow) => {
-                if (lessonRow.step_order == null) {
-                    return
-                }
-
-                // Convert step_order → array index
-                const lessonIndex = lessonRow.step_order - 1
-
-                if (!lessons[lessonIndex]) {
-                    return
-                }
-
-                // Downloads entered in the UI for this lesson
-                const lessonDownloads = lessons[lessonIndex].downloads
-
-                lessonDownloads.forEach(d => {
-                    downloadsPayload.push({
-                        lesson_id: lessonRow.id,   // 🔥 THIS IS THE KEY PART
-                        title: d.title,
-                        description: d.description || null,
-                        file_url: d.file_url,
-                        file_type: d.file_type,
-                        file_size: d.file_size
-                    })
-                })
+            const res = await fetch('/api/admin/courses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...coursePayload,
+                    intro_video_url: trimmedIntro,
+                    lessons: lessonsPayload,
+                }),
             })
 
-            if (downloadsPayload.length > 0) {
-                const { error: downloadsError } = await supabase
-                    .from('lesson_downloads')
-                    .insert(downloadsPayload)
-
-                if (downloadsError) throw downloadsError
+            const resData = await res.json()
+            if (!res.ok) {
+                throw new Error(resData?.error || 'Failed to create course')
             }
 
             // Clear saved drafts on successful creation (local + server)

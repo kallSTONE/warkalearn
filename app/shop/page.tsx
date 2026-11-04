@@ -22,7 +22,7 @@ type SortMode = 'featured' | 'price-low' | 'price-high' | 'rating' | 'newest'
 
 export default function ShopPage() {
   const router = useRouter()
-  const { user, supabase } = useSupabase()
+  const { user } = useSupabase()
   const { toast } = useToast()
   const [products, setProducts] = useState<ShopProduct[]>([])
   const [loadingProducts, setLoadingProducts] = useState(true)
@@ -41,21 +41,19 @@ export default function ShopPage() {
     updateQuantity,
     removeItem,
     checkout,
-  } = useShopCart({
-    supabase,
-    userId: user?.id,
-  })
+  } = useShopCart({ userId: user?.id })
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoadingProducts(true)
-      const { data, error } = await supabase
-        .from('shop_products')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-
-      if (error) {
+      try {
+        const res = await fetch('/api/shop/products')
+        const json = await res.json()
+        if (!res.ok) {
+          throw new Error(json?.error || 'Could not load products')
+        }
+        setProducts(json?.data || [])
+      } catch (error: any) {
         console.error('Error fetching shop products:', error)
         toast({
           title: 'Could not load products',
@@ -63,16 +61,13 @@ export default function ShopPage() {
           variant: 'destructive',
         })
         setProducts([])
+      } finally {
         setLoadingProducts(false)
-        return
       }
-
-      setProducts(data || [])
-      setLoadingProducts(false)
     }
 
     void fetchProducts()
-  }, [supabase, toast])
+  }, [toast])
 
   const categories = useMemo(() => {
     const counts = products.reduce<Record<string, number>>((acc, product) => {
@@ -113,7 +108,7 @@ export default function ShopPage() {
         case 'rating':
           return Number(b.rating) - Number(a.rating)
         case 'newest':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         case 'featured':
         default:
           return Number(b.is_featured) - Number(a.is_featured)

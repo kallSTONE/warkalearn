@@ -1,95 +1,66 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import { shopOrders, shopOrderItems, profiles } from '@/db/schema'
 import { requireAdminRequest } from '@/lib/server/api-auth'
+import { desc, eq, inArray } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
-
-type OrderRow = {
-  id: string
-  user_id: string
-  status: string
-  payment_method: string
-  payment_reference: string | null
-  currency: string
-  subtotal: number
-  total_amount: number
-  created_at: string
-  updated_at: string
-}
-
-type ProfileRow = {
-  id: string
-  full_name: string | null
-}
-
-type OrderItemRow = {
-  order_id: string
-  quantity: number
-  line_total: number
-}
 
 export async function GET(request: Request) {
   const authResult = await requireAdminRequest(request)
   if (!authResult.ok) return authResult.response
 
   try {
-    const admin = getSupabaseAdminClient()
     const url = new URL(request.url)
     const statusFilter = (url.searchParams.get('status') || '').trim().toLowerCase()
 
-    let ordersQuery = admin.from('shop_orders').select('*')
+    let ordersQuery = db.select().from(shopOrders)
+    let orderRows: (typeof shopOrders.$inferSelect)[]
+
     if (statusFilter) {
-      ordersQuery = ordersQuery.eq('status', statusFilter)
+      orderRows = await db
+        .select()
+        .from(shopOrders)
+        .where(eq(shopOrders.status, statusFilter))
+        .orderBy(desc(shopOrders.createdAt))
+    } else {
+      orderRows = await db
+        .select()
+        .from(shopOrders)
+        .orderBy(desc(shopOrders.createdAt))
     }
 
-    const { data: orders, error: ordersError } = await ordersQuery.order('created_at', { ascending: false })
-    if (ordersError) {
-      console.error('Admin orders list error:', ordersError)
-      return NextResponse.json({ error: 'Unable to load orders.' }, { status: 500 })
-    }
-
-    const orderRows = (orders ?? []) as OrderRow[]
     if (orderRows.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 })
     }
 
-    const userIds = Array.from(new Set(orderRows.map((order) => order.user_id)))
-    const orderIds = orderRows.map((order) => order.id)
+    const userIds = Array.from(new Set(orderRows.map((o) => o.userId)))
+    const orderIds = orderRows.map((o) => o.id)
 
-    const [profilesResult, itemsResult] = await Promise.all([
-      admin.from('profiles').select('id, full_name').in('id', userIds).returns<ProfileRow[]>(),
-      admin
-        .from('shop_order_items')
-        .select('order_id, quantity, line_total')
-        .in('order_id', orderIds)
-        .returns<OrderItemRow[]>(),
+    const [userProfiles, orderItems] = await Promise.all([
+      db.select({ id: profiles.id, fullName: profiles.fullName }).from(profiles).where(inArray(profiles.id, userIds)),
+      db.select().from(shopOrderItems).where(inArray(shopOrderItems.orderId, orderIds)),
     ])
 
-    if (profilesResult.error || itemsResult.error) {
-      console.error('Admin orders linked query error:', profilesResult.error || itemsResult.error)
-      return NextResponse.json({ error: 'Unable to load order details.' }, { status: 500 })
-    }
-
-    const profileById = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]))
+    const profileById = new Map(userProfiles.map((p) => [p.id, p]))
 
     const itemSummaryByOrderId = new Map<string, { itemCount: number; quantityTotal: number; lineTotal: number }>()
-    ;(itemsResult.data ?? []).forEach((item) => {
-      const current = itemSummaryByOrderId.get(item.order_id) ?? {
+    orderItems.forEach((item) => {
+      const current = itemSummaryByOrderId.get(item.orderId) ?? {
         itemCount: 0,
         quantityTotal: 0,
         lineTotal: 0,
       }
-
       current.itemCount += 1
       current.quantityTotal += Number(item.quantity || 0)
-      current.lineTotal += Number(item.line_total || 0)
-      itemSummaryByOrderId.set(item.order_id, current)
+      current.lineTotal += Number(item.lineTotal || 0)
+      itemSummaryByOrderId.set(item.orderId, current)
     })
 
     const data = orderRows.map((order) => {
-      const profile = profileById.get(order.user_id)
+      const profile = profileById.get(order.userId)
       const itemSummary = itemSummaryByOrderId.get(order.id) ?? {
         itemCount: 0,
         quantityTotal: 0,
@@ -97,8 +68,17 @@ export async function GET(request: Request) {
       }
 
       return {
-        ...order,
-        customer_name: profile?.full_name || 'Unknown customer',
+        id: order.id,
+        user_id: order.userId,
+        status: order.status,
+        payment_method: order.paymentMethod,
+        payment_reference: order.paymentReference,
+        currency: order.currency,
+        subtotal: Number(order.subtotal),
+        total_amount: Number(order.totalAmount),
+        created_at: order.createdAt?.toISOString(),
+        updated_at: order.updatedAt?.toISOString(),
+        customer_name: profile?.fullName ?? null,
         item_count: itemSummary.itemCount,
         quantity_total: itemSummary.quantityTotal,
         line_total: itemSummary.lineTotal,

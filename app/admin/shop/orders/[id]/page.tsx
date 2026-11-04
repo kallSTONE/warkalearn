@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
 import { formatEthiopianBirr } from '@/lib/shop'
 
 type OrderDetail = {
@@ -38,15 +37,7 @@ type OrderDetail = {
 }
 
 async function getAuthHeaders(contentType = false) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  const accessToken = session?.access_token
-  if (!accessToken) throw new Error('Missing session token.')
-
   return {
-    Authorization: `Bearer ${accessToken}`,
     ...(contentType ? { 'Content-Type': 'application/json' } : {}),
   }
 }

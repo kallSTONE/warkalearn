@@ -21,7 +21,7 @@ export default function ProductDetailPage() {
   const pathname = usePathname()
   const router = useRouter()
   const slug = params?.slug
-  const { user, supabase } = useSupabase()
+  const { user } = useSupabase()
   const { toast } = useToast()
 
   const [product, setProduct] = useState<ShopProduct | null>(null)
@@ -39,36 +39,31 @@ export default function ProductDetailPage() {
     updateQuantity,
     removeItem,
     checkout,
-  } = useShopCart({
-    supabase,
-    userId: user?.id,
-  })
+  } = useShopCart({ userId: user?.id })
 
   useEffect(() => {
     if (!slug) return
 
     const fetchProduct = async () => {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('shop_products')
-        .select('*')
-        .eq('slug', slug)
-        .eq('is_active', true)
-        .maybeSingle()
-
-      if (error) {
+      try {
+        const res = await fetch(`/api/shop/products/${slug}`)
+        const json = await res.json()
+        if (!res.ok) {
+          setProduct(null)
+          return
+        }
+        setProduct(json?.data || null)
+      } catch (error: any) {
         console.error('Error loading product:', error)
         setProduct(null)
+      } finally {
         setLoading(false)
-        return
       }
-
-      setProduct(data)
-      setLoading(false)
     }
 
     void fetchProduct()
-  }, [slug, supabase])
+  }, [slug])
 
   const handleAddToCart = async () => {
     if (!product) return

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
 import { formatEthiopianBirr } from '@/lib/shop'
 
 type OrderListItem = {
@@ -25,15 +24,8 @@ type OrderListItem = {
 }
 
 async function getAuthHeaders() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  const accessToken = session?.access_token
-  if (!accessToken) throw new Error('Missing session token.')
-
   return {
-    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
   }
 }
 

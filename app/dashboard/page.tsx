@@ -76,7 +76,7 @@ type LiveSchedule = {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, loading, supabase } = useSupabase()
+  const { user, loading } = useSupabase()
   const { locale } = useLanguage()
   const t = (key: string, fallback?: string) => translate(locale, key, fallback)
   const [courses, setCourses] = useState<EnrolledCourse[]>([])
@@ -94,8 +94,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading) {
-      if (!user || user.user_metadata?.role !== 'lawyer') {
+      if (!user) {
         router.replace('/login')
+      } else if (user.user_metadata?.role === 'admin') {
+        router.replace('/admin/dashboard')
+      } else if (user.user_metadata?.role === 'reviewer') {
+        router.replace('/reviewer')
       }
     }
   }, [user, loading, router])
@@ -103,201 +107,37 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
 
-    const fetchEnrolledCourses = async () => {
+    const fetchDashboard = async () => {
       setCoursesLoading(true)
       setSidebarLoading(true)
+      try {
+        const res = await fetch('/api/dashboard', { cache: 'no-store' })
+        if (!res.ok) {
+          throw new Error('Failed to load dashboard data')
+        }
+        const data = await res.json()
 
-      const { data, error } = await supabase
-        .from('course_enrollments')
-        .select(`
-          id,
-          enrolled_at,
-          courses (
-            id,
-            title,
-            slug,
-            hero_image,
-            estimated_hours
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('enrolled_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching enrollments:', error)
+        setCourses(data.courses || [])
+        setStats(data.stats || {
+          coursesInProgress: 0,
+          certificatesEarned: 0,
+          learningHours: 0,
+          forumPosts: 0,
+        })
+        setDiscussionUpdates(data.discussionUpdates || [])
+        setUpcomingEvents(data.upcomingEvents || [])
+        setLiveSchedules(data.liveSchedules || [])
+      } catch (err) {
+        console.error('Error loading dashboard:', err)
+        setCourses([])
+      } finally {
         setCoursesLoading(false)
         setSidebarLoading(false)
-        return
       }
-
-      const formattedCourses: EnrolledCourse[] = await Promise.all(
-        data.map(async (enrollment: any) => {
-          // Fetch course progress for this enrollment (course_progress.enrollment_id -> course_enrollments.id)
-          const { data: progressRow } = await supabase
-            .from('course_progress')
-            .select('progress_percentage, completed')
-            .eq('enrollment_id', enrollment.id)
-            .maybeSingle()
-
-          // Determine first incomplete lesson for this user in this course
-          const { data: courseLessons, error: lessonsError } = await supabase
-            .from('lessons')
-            .select('id, title, step_order')
-            .eq('course_id', enrollment.courses.id)
-            .order('step_order', { ascending: true })
-
-          let firstIncompleteLesson: { id: number; title: string; step_order: number } | null = null
-          if (!lessonsError && courseLessons && courseLessons.length > 0) {
-            const lessonIds = courseLessons.map((l: any) => l.id)
-            const { data: completions } = await supabase
-              .from('lesson_quiz_completions')
-              .select('lesson_id')
-              .in('lesson_id', lessonIds)
-              .eq('user_id', user.id)
-
-            const completedSet = new Set<number>((completions || []).map((c: any) => c.lesson_id))
-            firstIncompleteLesson = (courseLessons as any[]).find((l: any) => !completedSet.has(l.id)) || null
-          }
-
-          return {
-            enrollment_id: enrollment.id,
-            enrolled_at: enrollment.enrolled_at,
-            progress: progressRow?.progress_percentage ?? 0,
-            completed: progressRow?.completed ?? false,
-            course: enrollment.courses,
-            firstLessonId: firstIncompleteLesson?.step_order ?? null,
-            nextLessonTitle: firstIncompleteLesson?.title ?? null,
-          }
-        })
-      )
-
-      setCourses(formattedCourses)
-
-      const coursesInProgress = formattedCourses.filter((course) => !course.completed && course.progress < 100).length
-      const learningHours = Number(
-        formattedCourses
-          .reduce((total, course) => total + ((course.course.estimated_hours ?? 0) * course.progress) / 100, 0)
-          .toFixed(1)
-      )
-
-      const [{ count: certificatesEarned }, { count: forumPostsCount }, { data: topicRows, error: topicsError }, { data: retryRows, error: retriesError }, { data: liveRows, error: liveRowsError }] = await Promise.all([
-        supabase
-          .from('certificates')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .is('revoked_at', null),
-        supabase
-          .from('forum_posts')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
-        supabase
-          .from('forum_topics')
-          .select('id, title')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(4),
-        supabase
-          .from('certification_attempts')
-          .select('id, next_retry_at, courses(title)')
-          .eq('user_id', user.id)
-          .not('next_retry_at', 'is', null)
-          .gte('next_retry_at', new Date().toISOString())
-          .order('next_retry_at', { ascending: true })
-          .limit(3),
-        supabase
-          .from('live_class_registrations')
-          .select(`
-            id,
-            live_class_id,
-            payment_status,
-            registration_status,
-            live_classes (
-              id,
-              title,
-              start_at,
-              meeting_platform,
-              meeting_url
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-      ])
-
-      if (topicsError) {
-        console.error('Error fetching forum topics:', topicsError)
-      }
-
-      if (retriesError) {
-        console.error('Error fetching certification retries:', retriesError)
-      }
-
-      if (liveRowsError) {
-        console.error('Error fetching live class registrations:', liveRowsError)
-      }
-
-      const hydratedDiscussions: DashboardDiscussion[] = topicRows
-        ? await Promise.all(
-            topicRows.map(async (topic: any) => {
-              const [{ count: replyCount }, { data: latestPostRows }] = await Promise.all([
-                supabase
-                  .from('forum_posts')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('topic_id', topic.id),
-                supabase
-                  .from('forum_posts')
-                  .select('content')
-                  .eq('topic_id', topic.id)
-                  .order('created_at', { ascending: false })
-                  .limit(1),
-              ])
-
-              return {
-                id: topic.id,
-                title: topic.title,
-                latestReply:
-                  latestPostRows?.[0]?.content?.slice(0, 120) ||
-                  t('dashboard.discussion.noRepliesYet', 'No replies yet'),
-                replies: replyCount ?? 0,
-              }
-            })
-          )
-        : []
-
-      const mappedUpcomingEvents: DashboardEvent[] = (retryRows || []).map((row: any) => ({
-        id: row.id,
-        title: `${t('dashboard.events.certificationRetry', 'Certification retry')}: ${row.courses?.title ?? t('dashboard.course', 'Course')}`,
-        date: row.next_retry_at,
-        duration: t('dashboard.events.duration.selfPaced', 'Self-paced'),
-      }))
-
-      const mappedLiveSchedules: LiveSchedule[] = (liveRows || [])
-        .map((row: any) => ({
-          id: row.id,
-          liveClassId: row.live_class_id,
-          title: row.live_classes?.title ?? t('dashboard.liveClasses.unknown', 'Live class'),
-          startAt: row.live_classes?.start_at ?? row.created_at,
-          platform: row.live_classes?.meeting_platform ?? t('dashboard.liveClasses.platform', 'Live session'),
-          meetingUrl: row.live_classes?.meeting_url ?? null,
-          paymentStatus: row.payment_status ?? 'paid',
-          registrationStatus: row.registration_status ?? 'registered',
-        }))
-        .sort((a: LiveSchedule, b: LiveSchedule) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
-
-      setStats({
-        coursesInProgress,
-        certificatesEarned: certificatesEarned ?? 0,
-        learningHours,
-        forumPosts: forumPostsCount ?? 0,
-      })
-      setDiscussionUpdates(hydratedDiscussions)
-      setUpcomingEvents(mappedUpcomingEvents)
-      setLiveSchedules(mappedLiveSchedules)
-      setCoursesLoading(false)
-      setSidebarLoading(false)
     }
 
-    fetchEnrolledCourses()
-  }, [user, supabase])
+    fetchDashboard()
+  }, [user])
 
   if (loading) {
     return (

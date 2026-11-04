@@ -1,27 +1,69 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/database.types'
+export type ShopProduct = {
+  id: string
+  slug: string
+  name: string
+  short_description: string | null
+  description: string | null
+  category: string
+  image_url: string | null
+  price_etb: number
+  rating: number
+  review_count: number
+  is_active: boolean
+  is_featured: boolean
+  is_bestseller: boolean
+  stock_quantity: number
+  created_at?: string
+  updated_at?: string
+}
 
-export type ShopProduct = Database['public']['Tables']['shop_products']['Row']
-export type ShopCartItem = Database['public']['Tables']['shop_cart_items']['Row'] & {
+export type ShopCartItem = {
+  id: string
+  user_id: string
+  product_id: string
+  quantity: number
+  created_at?: string
+  updated_at?: string
   shop_products: ShopProduct | null
 }
- 
-export type ShopOrder = Database['public']['Tables']['shop_orders']['Row']
-export type ShopOrderItem = Database['public']['Tables']['shop_order_items']['Row']
- 
+
+export type ShopOrder = {
+  id: string
+  user_id: string
+  status: string
+  payment_method: string
+  payment_reference: string | null
+  currency: string
+  subtotal: number
+  total_amount: number
+  created_at?: string
+  updated_at?: string
+}
+
+export type ShopOrderItem = {
+  id: string
+  order_id: string
+  product_id: string
+  product_name: string
+  unit_price: number
+  quantity: number
+  line_total: number
+  created_at?: string
+}
+
 export const formatEthiopianBirr = (amount: number | null | undefined) => {
   if (amount === null || amount === undefined) return '0 ETB'
- 
-  try { 
+
+  try {
     return new Intl.NumberFormat('en-ET', {
-      style: 'currency', 
-      currency: 'ETB', 
+      style: 'currency',
+      currency: 'ETB',
       maximumFractionDigits: 2,
-    }).format(amount) 
+    }).format(amount)
   } catch {
     return `${amount} ETB`
   }
-}   
+}
 
 export const getCartTotals = (items: ShopCartItem[]) => {
   return items.reduce(
@@ -34,45 +76,3 @@ export const getCartTotals = (items: ShopCartItem[]) => {
     { items: 0, subtotal: 0 }
   )
 }
-
-export const upsertToCart = async (
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  productId: string,
-  quantity = 1
-) => {
-  const { data: existing, error: existingError } = await supabase
-    .from('shop_cart_items')
-    .select('id, quantity')
-    .eq('user_id', userId)
-    .eq('product_id', productId)
-    .maybeSingle()
-
-  if (existingError) {
-    throw existingError
-  }
-
-  if (existing) {
-    const { error: updateError } = await supabase
-      .from('shop_cart_items')
-      .update({ quantity: existing.quantity + quantity })
-      .eq('id', existing.id)
-
-    if (updateError) {
-      throw updateError
-    }
-
-    return
-  }
-
-  const { error: insertError } = await supabase.from('shop_cart_items').insert({
-    user_id: userId,
-    product_id: productId,
-    quantity,
-  })   
-    
-  if (insertError) {
-    throw insertError
-  }   
-}      
-  

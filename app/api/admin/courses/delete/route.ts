@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/db'
+import { courses } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+import { requireAdminRequest } from '@/lib/server/api-auth'
 
 export async function POST(req: Request) {
     try {
+        const authResult = await requireAdminRequest(req)
+        if (!authResult.ok) {
+            return authResult.response
+        }
+
         const body = await req.json()
         const { courseId, enteredCourseName, password } = body || {}
 
@@ -19,16 +27,19 @@ export async function POST(req: Request) {
             return NextResponse.json({ ok: false, reason: 'invalid-password' }, { status: 401 })
         }
 
-        // Load course title from DB to ensure exact match
-        const { data: course, error: fetchError } = await supabase
-            .from('courses')
-            .select('id, title')
-            .eq('id', courseId)
-            .single()
-
-        if (fetchError) {
-            return NextResponse.json({ error: fetchError.message }, { status: 500 })
+        const numericCourseId = Number(courseId)
+        if (isNaN(numericCourseId)) {
+            return NextResponse.json({ ok: false, reason: 'invalid-id' }, { status: 400 })
         }
+
+        // Load course title from DB to ensure exact match
+        const course = await db.query.courses.findFirst({
+            where: eq(courses.id, numericCourseId),
+            columns: {
+                id: true,
+                title: true,
+            },
+        })
 
         if (!course) {
             return NextResponse.json({ ok: false, reason: 'not-found' }, { status: 404 })
@@ -41,18 +52,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ ok: false, reason: 'name-mismatch' }, { status: 400 })
         }
 
-        // Perform delete; rely on DB constraints for cascading
-        const { error: deleteError } = await supabase
-            .from('courses')
-            .delete()
-            .eq('id', courseId)
-
-        if (deleteError) {
-            return NextResponse.json({ error: deleteError.message }, { status: 500 })
-        }
+        // Perform delete; foreign key constraints cascade to lessons, enrollments, media
+        await db.delete(courses).where(eq(courses.id, numericCourseId))
 
         return NextResponse.json({ ok: true })
     } catch (err: any) {
+        console.error('Course deletion error:', err)
         return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 })
     }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
 import { authenticateRequest } from '@/lib/server/api-auth'
+import { registerLiveClass } from '@/lib/live-classes'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -24,25 +24,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'amount_paid must be a valid non-negative number.' }, { status: 400 })
     }
 
-    const admin = getSupabaseAdminClient()
-    console.log('[live-classes/register] user=', authResult.context.userId, 'live_class_id=', params.id, 'body=', body)
-    const { data, error } = await admin.rpc('register_live_class', {
-      p_user_id: authResult.context.userId,
-      p_live_class_id: params.id,
-      p_payment_method: paymentMethod,
-      p_amount_paid: amountValue,
-      p_payment_reference: paymentReference,
-      p_notes: notes,
+    const result = await registerLiveClass({
+      userId: authResult.context.userId,
+      liveClassId: params.id,
+      paymentMethod,
+      amountPaid: amountValue,
+      paymentReference,
+      notes,
     })
 
-    console.log('[live-classes/register] rpc result data=', data, 'error=', error)
-
-    if (error) {
-      console.error('Live class registration RPC error:', error)
-      return NextResponse.json({ error: 'Unable to register for the live class.', details: error }, { status: 500 })
-    }
-
-    const result = Array.isArray(data) ? data[0] : data
     const status = String(result?.status ?? '')
 
     if (status === 'registered' || status === 'already_registered') {
@@ -58,10 +48,19 @@ export async function POST(request: Request, { params }: { params: { id: string 
             ? 400
             : 400
 
-    // Return the RPC status and full result to help debugging on the client
-    return NextResponse.json({ error: status || 'Unable to register for the live class.', data: result }, { status: statusCode })
+    return NextResponse.json(
+      {
+        error: `Unable to register: ${status}`,
+        status,
+        data: result,
+      },
+      { status: statusCode }
+    )
   } catch (error: any) {
-    console.error('Live class register POST error:', error)
-    return NextResponse.json({ error: error?.message ?? 'Unable to register for the live class.' }, { status: 500 })
+    console.error('Live class registration route error:', error)
+    return NextResponse.json(
+      { error: error?.message ?? 'Unable to register for the live class.' },
+      { status: 500 }
+    )
   }
 }

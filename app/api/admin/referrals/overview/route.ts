@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import {
+  referralProfiles,
+  profiles,
+  referralInvites,
+  referralRewardRequests,
+  courses,
+} from '@/db/schema'
 import { requireAdminRequest } from '@/lib/server/api-auth'
+import { desc, inArray } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -8,185 +16,109 @@ export const fetchCache = 'force-no-store'
 
 const REWARD_THRESHOLD = 300
 
-type ReferralProfileRow = {
-    user_id: string
-    referral_points: number
-    successful_invites: number
-    free_courses_awarded: number
-    updated_at: string
-}
-
-type ProfileRow = {
-    id: string
-    full_name: string | null
-}
-
-type RewardRequestRow = {
-    id: string
-    user_id: string
-    status: string
-    requested_at: string
-    requested_course_id: number | null
-    admin_note: string | null
-}
-
-type CourseTitleRow = {
-    id: number
-    title: string
-}
-
-type InviteCountRow = {
-    referrer_user_id: string
-}
-
 export async function GET(request: Request) {
-    const authResult = await requireAdminRequest(request)
+  const authResult = await requireAdminRequest(request)
+  if (!authResult.ok) return authResult.response
 
-    if (!authResult.ok) {
-        return authResult.response
+  try {
+    const referralProfileRows = await db
+      .select()
+      .from(referralProfiles)
+      .orderBy(desc(referralProfiles.referralPoints))
+
+    if (referralProfileRows.length === 0) {
+      return NextResponse.json(
+        {
+          totals: {
+            totalReferrals: 0,
+            activeReferrers: 0,
+            totalPointsIssued: 0,
+            totalRewardsClaimed: 0,
+          },
+          topReferrers: [],
+          rewardRequests: [],
+        },
+        { status: 200 }
+      )
     }
 
-    try {
-        const admin = getSupabaseAdminClient()
+    const userIds = referralProfileRows.map((row) => row.userId)
 
-        const { data: referralProfiles, error: referralProfilesError } = await admin
-            .from('referral_profiles')
-            .select('user_id, referral_points, successful_invites, free_courses_awarded, updated_at')
-            .order('referral_points', { ascending: false })
-            .returns<ReferralProfileRow[]>()
+    const [userProfiles, invites, rewardRequests] = await Promise.all([
+      db
+        .select({ id: profiles.id, fullName: profiles.fullName })
+        .from(profiles)
+        .where(inArray(profiles.id, userIds)),
+      db
+        .select({ referrerUserId: referralInvites.referrerUserId })
+        .from(referralInvites)
+        .where(inArray(referralInvites.referrerUserId, userIds)),
+      db
+        .select()
+        .from(referralRewardRequests)
+        .orderBy(desc(referralRewardRequests.requestedAt))
+        .limit(20),
+    ])
 
-        if (referralProfilesError) {
-            console.error('Referral profiles query error:', referralProfilesError)
-            return NextResponse.json({ error: 'Unable to load referral profiles.' }, { status: 500 })
-        }
+    const profileMap = new Map(userProfiles.map((p) => [p.id, p]))
 
-        const userIds = (referralProfiles ?? []).map((row) => row.user_id)
+    const inviteCountMap = new Map<string, number>()
+    invites.forEach((invite) => {
+      inviteCountMap.set(
+        invite.referrerUserId,
+        (inviteCountMap.get(invite.referrerUserId) ?? 0) + 1
+      )
+    })
 
-        const { data: profiles, error: profilesError } = await admin
-            .from('profiles')
-            .select('id, full_name')
-            .in('id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000'])
-            .returns<ProfileRow[]>()
+    const totalReferrals = invites.length
+    const activeReferrers = referralProfileRows.filter((p) => p.referralPoints > 0).length
+    const totalPointsIssued = referralProfileRows.reduce((sum, p) => sum + p.referralPoints, 0)
+    const totalRewardsClaimed = referralProfileRows.reduce(
+      (sum, p) => sum + p.freeCoursesAwarded,
+      0
+    )
 
-        if (profilesError) {
-            console.error('Profiles query error:', profilesError)
-            return NextResponse.json({ error: 'Unable to load profile data.' }, { status: 500 })
-        }
+    const topReferrers = referralProfileRows.slice(0, 10).map((row) => {
+      const profile = profileMap.get(row.userId)
+      return {
+        id: row.userId,
+        fullName: profile?.fullName ?? null,
+        referralPoints: row.referralPoints,
+        successfulInvites: inviteCountMap.get(row.userId) ?? row.successfulInvites,
+        freeCoursesAwarded: row.freeCoursesAwarded,
+        eligibleRewardTiers: Math.floor(row.referralPoints / REWARD_THRESHOLD),
+        lastActivity: row.updatedAt?.toISOString(),
+      }
+    })
 
-        const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
+    const formattedRewardRequests = rewardRequests.map((req) => {
+      const profile = profileMap.get(req.userId)
+      return {
+        id: req.id,
+        userId: req.userId,
+        fullName: profile?.fullName ?? null,
+        status: req.status,
+        requestedAt: req.requestedAt?.toISOString(),
+        freeCoursesToAward: req.freeCoursesToAward,
+        adminNote: req.adminNote,
+      }
+    })
 
-        const { data: qualifiedInvites, error: qualifiedInvitesError } = await admin
-            .from('referral_invites')
-            .select('referrer_user_id')
-            .eq('status', 'qualified')
-            .in(
-                'referrer_user_id',
-                userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']
-            )
-            .returns<InviteCountRow[]>()
-
-        if (qualifiedInvitesError) {
-            console.error('Qualified invites query error:', qualifiedInvitesError)
-            return NextResponse.json({ error: 'Unable to load invite counts.' }, { status: 500 })
-        }
-
-        const inviteCountByReferrer = new Map<string, number>()
-        for (const inviteRow of qualifiedInvites ?? []) {
-            const nextCount = (inviteCountByReferrer.get(inviteRow.referrer_user_id) ?? 0) + 1
-            inviteCountByReferrer.set(inviteRow.referrer_user_id, nextCount)
-        }
-
-        const { data: pendingRewardRequests, error: pendingRewardRequestsError } = await admin
-            .from('referral_reward_requests')
-            .select('id, user_id, status, requested_at, requested_course_id, admin_note')
-            .eq('status', 'pending')
-            .order('requested_at', { ascending: false })
-            .returns<RewardRequestRow[]>()
-
-        if (pendingRewardRequestsError) {
-            console.error('Pending reward requests query error:', pendingRewardRequestsError)
-            return NextResponse.json({ error: 'Unable to load pending reward requests.' }, { status: 500 })
-        }
-
-        const pendingByUser = new Map<string, RewardRequestRow>()
-        for (const requestRow of pendingRewardRequests ?? []) {
-            if (!pendingByUser.has(requestRow.user_id)) {
-                pendingByUser.set(requestRow.user_id, requestRow)
-            }
-        }
-
-        const requestedCourseIds = Array.from(
-            new Set(
-                (pendingRewardRequests ?? [])
-                    .map((row) => row.requested_course_id)
-                    .filter((courseId): courseId is number => typeof courseId === 'number')
-            )
-        )
-
-        const { data: requestedCourses, error: requestedCoursesError } = await admin
-            .from('courses')
-            .select('id, title')
-            .in('id', requestedCourseIds.length > 0 ? requestedCourseIds : [-1])
-            .returns<CourseTitleRow[]>()
-
-        if (requestedCoursesError) {
-            console.error('Requested courses query error:', requestedCoursesError)
-            return NextResponse.json({ error: 'Unable to load requested course data.' }, { status: 500 })
-        }
-
-        const courseTitleById = new Map((requestedCourses ?? []).map((course) => [course.id, course.title]))
-
-        const students = (referralProfiles ?? []).map((row) => {
-            const profile = profileMap.get(row.user_id)
-            const pendingRequest = pendingByUser.get(row.user_id)
-            const eligibleFreeCourses = Math.floor(row.referral_points / REWARD_THRESHOLD)
-            const hasPendingRequest = Boolean(pendingRequest)
-
-            return {
-                id: row.user_id,
-                fullName: profile?.full_name ?? 'Unknown user',
-                referralPoints: row.referral_points,
-                successfulInvites:
-                    inviteCountByReferrer.get(row.user_id) ?? row.successful_invites,
-                freeCoursesAwarded: row.free_courses_awarded,
-                rewarded: row.free_courses_awarded > 0,
-                isEligiblePending: eligibleFreeCourses > row.free_courses_awarded && !hasPendingRequest,
-                hasPendingRequest,
-                latestRequestId: pendingRequest?.id ?? null,
-                latestRequestedCourseId: pendingRequest?.requested_course_id ?? null,
-                latestRequestedCourseTitle:
-                    typeof pendingRequest?.requested_course_id === 'number'
-                        ? courseTitleById.get(pendingRequest.requested_course_id) ?? null
-                        : null,
-                latestRequestAdminNote: pendingRequest?.admin_note ?? null,
-                lastRewardedAt: row.updated_at,
-            }
-        })
-
-        const studentsWithPoints = students.filter((student) => student.referralPoints > 0)
-
-        return NextResponse.json(
-            {
-                metrics: {
-                    studentsWithPoints: studentsWithPoints.length,
-                    totalPointsIssued: studentsWithPoints.reduce(
-                        (sum, student) => sum + student.referralPoints,
-                        0
-                    ),
-                    studentsRewarded: studentsWithPoints.filter((student) => student.rewarded).length,
-                    pendingRewards: studentsWithPoints.filter(
-                        (student) => student.isEligiblePending || student.hasPendingRequest
-                    ).length,
-                },
-                students: studentsWithPoints,
-            },
-            { status: 200 }
-        )
-    } catch (error: any) {
-        console.error('Admin referral overview API error:', error)
-        return NextResponse.json(
-            { error: error?.message ?? 'Unable to load referral overview.' },
-            { status: 500 }
-        )
-    }
+    return NextResponse.json(
+      {
+        totals: {
+          totalReferrals,
+          activeReferrers,
+          totalPointsIssued,
+          totalRewardsClaimed,
+        },
+        topReferrers,
+        rewardRequests: formattedRewardRequests,
+      },
+      { status: 200 }
+    )
+  } catch (error: any) {
+    console.error('Admin referrals overview GET error:', error)
+    return NextResponse.json({ error: error?.message ?? 'Unable to load overview.' }, { status: 500 })
+  }
 }

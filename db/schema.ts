@@ -98,7 +98,7 @@ export const profiles = pgTable('profiles', {
   fullName: text('full_name'),
   avatarUrl: text('avatar_url'),
   bio: text('bio'),
-  role: text('role').default('lawyer'),
+  role: text('role').default('student'),
   createdAt: timestamptz('created_at').defaultNow(),
   updatedAt: timestamptz('updated_at').defaultNow(),
 })
@@ -172,6 +172,7 @@ export const courseEnrollments = pgTable(
       .references(() => courses.id, { onDelete: 'cascade' }),
     enrolledAt: timestamptz('enrolled_at').defaultNow(),
     progressId: uuid('progress_id'),
+    amountPaid: numeric('amount_paid', { precision: 10, scale: 2 }).default('0'),
   },
   (t) => [unique().on(t.userId, t.courseId)]
 )

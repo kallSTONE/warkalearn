@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import { profiles, courses, courseEnrollments, courseProgress, shopOrders, forumTopics, certificates, liveClassRegistrations } from '@/db/schema'
 import { requireAdminRequest } from '@/lib/server/api-auth'
 
 export const dynamic = 'force-dynamic'
@@ -243,71 +244,96 @@ export async function GET(request: Request) {
   }
 
   try {
-    const admin = getSupabaseAdminClient()
     const monthBuckets = getRecentMonths(MONTH_COUNT)
     const currentMonthKey = monthBuckets[monthBuckets.length - 1]?.key ?? ''
     const previousMonthKey = monthBuckets[monthBuckets.length - 2]?.key ?? ''
 
-    const [profilesResult, coursesResult, enrollmentsResult, progressResult, ordersResult, topicsResult, certificatesResult, liveRegistrationsResult] =
+    const [rawProfiles, rawCourses, rawEnrollments, rawProgress, rawOrders, rawTopics, rawCertificates, rawLiveRegistrations] =
       await Promise.all([
-        admin.from('profiles').select('id, full_name, role, created_at').returns<ProfileRow[]>(),
-        admin
-          .from('courses')
-          .select('id, title, slug, category, created_at, published, is_paid, price, status, rating')
-          .returns<CourseRow[]>(),
-        admin
-          .from('course_enrollments')
-          .select('id, user_id, course_id, enrolled_at, progress_id, amount_paid')
-          .returns<EnrollmentRow[]>(),
-        admin
-          .from('course_progress')
-          .select('id, enrollment_id, completed, completed_at, progress_percentage')
-          .returns<ProgressRow[]>(),
-        admin.from('shop_orders').select('id, total_amount, status, created_at').returns<OrderRow[]>(),
-        admin.from('forum_topics').select('id, created_at').returns<TopicRow[]>(),
-        admin.from('certificates').select('id, created_at, course_id').returns<CertificateRow[]>(),
-        admin
-          .from('live_class_registrations')
-          .select('id, live_class_id, amount_paid, payment_status, registration_status, created_at')
-          .returns<LiveClassRegistrationRow[]>(),
+        db.select().from(profiles),
+        db.select().from(courses),
+        db.select().from(courseEnrollments),
+        db.select().from(courseProgress),
+        db.select().from(shopOrders),
+        db.select().from(forumTopics),
+        db.select().from(certificates),
+        db.select().from(liveClassRegistrations),
       ])
 
-    const queryErrors = [
-      profilesResult.error,
-      coursesResult.error,
-      enrollmentsResult.error,
-      progressResult.error,
-      ordersResult.error,
-      topicsResult.error,
-      certificatesResult.error,
-      liveRegistrationsResult.error,
-    ].filter(Boolean)
+    const allProfiles = rawProfiles.map((r) => ({
+      id: r.id,
+      full_name: r.fullName,
+      role: r.role,
+      created_at: r.createdAt?.toISOString() ?? '',
+    }))
 
-    if (queryErrors.length > 0) {
-      const firstError = queryErrors[0]
-      console.error('Admin overview query error:', firstError)
-      return NextResponse.json({ error: 'Unable to load admin overview.' }, { status: 500 })
-    }
+    const allCourses = rawCourses.map((r) => ({
+      id: r.id,
+      title: r.title,
+      slug: r.slug,
+      category: r.category,
+      created_at: r.createdAt?.toISOString() ?? '',
+      published: r.published,
+      is_paid: r.isPaid,
+      price: Number(r.price ?? 0),
+      status: r.status,
+      rating: Number(r.rating ?? 0),
+    }))
 
-    const profiles = profilesResult.data ?? []
-    const courses = coursesResult.data ?? []
-    const enrollments = enrollmentsResult.data ?? []
-    const progressRows = progressResult.data ?? []
-    const orders = ordersResult.data ?? []
-    const topics = topicsResult.data ?? []
-    const certificates = certificatesResult.data ?? []
-    const liveClassRegistrations = liveRegistrationsResult.data ?? []
+    const allEnrollments = rawEnrollments.map((r) => ({
+      id: r.id,
+      user_id: r.userId,
+      course_id: r.courseId,
+      enrolled_at: r.enrolledAt?.toISOString() ?? '',
+      progress_id: r.progressId,
+      amount_paid: Number(r.amountPaid ?? 0),
+    }))
 
-    const courseById = new Map(courses.map((course) => [course.id, course]))
-    const progressById = new Map(progressRows.map((progress) => [progress.id, progress]))
-    const progressByEnrollmentId = new Map(progressRows.map((progress) => [progress.enrollment_id, progress]))
+    const allProgress = rawProgress.map((r) => ({
+      id: r.id,
+      enrollment_id: r.enrollmentId,
+      completed: r.completed,
+      completed_at: r.completedAt?.toISOString() ?? null,
+      progress_percentage: Number(r.progressPercentage ?? 0),
+    }))
 
-    const paidOrders = orders.filter((order) => {
+    const allOrders = rawOrders.map((r) => ({
+      id: r.id,
+      total_amount: Number(r.totalAmount ?? 0),
+      status: r.status,
+      created_at: r.createdAt?.toISOString() ?? '',
+    }))
+
+    const allTopics = rawTopics.map((r) => ({
+      id: r.id,
+      created_at: r.createdAt?.toISOString() ?? '',
+    }))
+
+    const allCertificates = rawCertificates.map((r) => ({
+      id: r.id,
+      course_id: r.courseId,
+      created_at: r.createdAt?.toISOString() ?? '',
+    }))
+
+    const allLiveRegistrations = rawLiveRegistrations.map((r) => ({
+      id: r.id,
+      live_class_id: r.liveClassId,
+      amount_paid: Number(r.amountPaid ?? 0),
+      payment_status: r.paymentStatus,
+      registration_status: r.registrationStatus,
+      created_at: r.createdAt?.toISOString() ?? '',
+    }))
+
+    const courseById = new Map(allCourses.map((course) => [course.id, course]))
+    const progressById = new Map(allProgress.map((progress) => [progress.id, progress]))
+    const progressByEnrollmentId = new Map(allProgress.map((progress) => [progress.enrollment_id, progress]))
+
+    const paidOrders = allOrders.filter((order) => {
       if (!order.status) return true
       return PAID_STATUSES.has(order.status.toLowerCase())
     })
 
-    const paidLiveClassRegistrations = liveClassRegistrations.filter((registration) => {
+    const paidLiveClassRegistrations = allLiveRegistrations.filter((registration) => {
       if (!registration.payment_status) return true
       return PAID_STATUSES.has(registration.payment_status.toLowerCase())
     })
@@ -322,17 +348,17 @@ export async function GET(request: Request) {
       growthTrendMap.set(month.key, { month: month.label, students: 0, mentors: 0 })
     })
 
-    profiles.forEach((profile) => {
+    allProfiles.forEach((profile) => {
       const monthKey = getMonthKey(profile.created_at)
       const bucket = monthTrendMap.get(monthKey)
       const growthBucket = growthTrendMap.get(monthKey)
 
-      if (bucket && profile.role?.toLowerCase() === 'lawyer') {
+      if (bucket && (profile.role?.toLowerCase() === 'student')) {
         bucket.students += 1
       }
 
       if (growthBucket) {
-        if (profile.role?.toLowerCase() === 'lawyer') {
+        if ((profile.role?.toLowerCase() === 'student')) {
           growthBucket.students += 1
         }
         if (profile.role?.toLowerCase() === 'mentor') {
@@ -341,7 +367,7 @@ export async function GET(request: Request) {
       }
     })
 
-    enrollments.forEach((enrollment) => {
+    allEnrollments.forEach((enrollment) => {
       const monthKey = getMonthKey(enrollment.enrolled_at)
       const trendBucket = monthTrendMap.get(monthKey)
       const revenueBucket = revenueTrendMap.get(monthKey)
@@ -355,7 +381,7 @@ export async function GET(request: Request) {
       }
     })
 
-    const paidCourseEnrollments = enrollments.filter((enrollment) => {
+    const paidCourseEnrollments = allEnrollments.filter((enrollment) => {
       const course = courseById.get(enrollment.course_id)
       return course?.is_paid === true
     })
@@ -393,8 +419,8 @@ export async function GET(request: Request) {
       }
     })
 
-    const totalStudents = profiles.filter((profile) => profile.role?.toLowerCase() === 'lawyer').length
-    const activeCourses = courses.filter(isPublishedCourse).length
+    const totalStudents = allProfiles.filter((profile) => (profile.role?.toLowerCase() === 'student')).length
+    const activeCourses = allCourses.filter(isPublishedCourse).length
     const shopRevenue = paidOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
     const courseRevenue = paidCourseEnrollments.reduce(
       (sum, enrollment) => sum + getEnrollmentRevenueAmount(enrollment),
@@ -402,17 +428,17 @@ export async function GET(request: Request) {
     )
     const liveClassRevenue = paidLiveClassRegistrations.reduce((sum, registration) => sum + Number(registration.amount_paid || 0), 0)
 
-    const studentsThisMonth = profiles.filter(
-      (profile) => profile.role?.toLowerCase() === 'lawyer' && getMonthKey(profile.created_at) === currentMonthKey
+    const studentsThisMonth = allProfiles.filter(
+      (profile) => (profile.role?.toLowerCase() === 'student') && getMonthKey(profile.created_at) === currentMonthKey
     ).length
-    const studentsPrevMonth = profiles.filter(
-      (profile) => profile.role?.toLowerCase() === 'lawyer' && getMonthKey(profile.created_at) === previousMonthKey
+    const studentsPrevMonth = allProfiles.filter(
+      (profile) => (profile.role?.toLowerCase() === 'student') && getMonthKey(profile.created_at) === previousMonthKey
     ).length
 
-    const activeCoursesThisMonth = courses.filter(
+    const activeCoursesThisMonth = allCourses.filter(
       (course) => isPublishedCourse(course) && getMonthKey(course.created_at) === currentMonthKey
     ).length
-    const activeCoursesPrevMonth = courses.filter(
+    const activeCoursesPrevMonth = allCourses.filter(
       (course) => isPublishedCourse(course) && getMonthKey(course.created_at) === previousMonthKey
     ).length
 
@@ -437,22 +463,22 @@ export async function GET(request: Request) {
       .filter((registration) => getMonthKey(registration.created_at) === previousMonthKey)
       .reduce((sum, registration) => sum + Number(registration.amount_paid || 0), 0)
 
-    const totalEnrollments = enrollments.length
-    const totalCompletions = enrollments.filter((enrollment) => {
+    const totalEnrollments = allEnrollments.length
+    const totalCompletions = allEnrollments.filter((enrollment) => {
       const progress = progressById.get(enrollment.progress_id ?? '') ?? progressByEnrollmentId.get(enrollment.id)
       return progress?.completed === true || (typeof progress?.progress_percentage === 'number' && progress.progress_percentage >= 100)
     }).length
     const completionRate = totalEnrollments > 0 ? Math.round((totalCompletions / totalEnrollments) * 100) : 0
 
-    const enrollmentsThisMonth = enrollments.filter((enrollment) => getMonthKey(enrollment.enrolled_at) === currentMonthKey).length
-    const enrollmentsPrevMonth = enrollments.filter((enrollment) => getMonthKey(enrollment.enrolled_at) === previousMonthKey).length
+    const enrollmentsThisMonth = allEnrollments.filter((enrollment) => getMonthKey(enrollment.enrolled_at) === currentMonthKey).length
+    const enrollmentsPrevMonth = allEnrollments.filter((enrollment) => getMonthKey(enrollment.enrolled_at) === previousMonthKey).length
 
-    const completionsThisMonth = enrollments.filter((enrollment) => {
+    const completionsThisMonth = allEnrollments.filter((enrollment) => {
       const progress = progressById.get(enrollment.progress_id ?? '') ?? progressByEnrollmentId.get(enrollment.id)
       const completed = progress?.completed === true || (typeof progress?.progress_percentage === 'number' && progress.progress_percentage >= 100)
       return completed && getMonthKey(progress?.completed_at ?? enrollment.enrolled_at) === currentMonthKey
     }).length
-    const completionsPrevMonth = enrollments.filter((enrollment) => {
+    const completionsPrevMonth = allEnrollments.filter((enrollment) => {
       const progress = progressById.get(enrollment.progress_id ?? '') ?? progressByEnrollmentId.get(enrollment.id)
       const completed = progress?.completed === true || (typeof progress?.progress_percentage === 'number' && progress.progress_percentage >= 100)
       return completed && getMonthKey(progress?.completed_at ?? enrollment.enrolled_at) === previousMonthKey
@@ -460,7 +486,7 @@ export async function GET(request: Request) {
 
     const dashboardRecentPool: Array<{ id: string; action: string; detail: string; at: string | null }> = []
 
-    enrollments
+    allEnrollments
       .slice()
       .sort((a, b) => new Date(b.enrolled_at ?? 0).getTime() - new Date(a.enrolled_at ?? 0).getTime())
       .slice(0, 5)
@@ -473,7 +499,7 @@ export async function GET(request: Request) {
         })
       })
 
-    certificates
+    allCertificates
       .slice()
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
@@ -486,13 +512,13 @@ export async function GET(request: Request) {
         })
       })
 
-    orders
+    allOrders
       .slice()
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
       .forEach((order) => {
         dashboardRecentPool.push({
-          id: `order-${order.id}`,
+          id: `order-${(order as any).id}`,
           action: 'Shop order',
           detail: `ETB ${Number(order.total_amount || 0).toLocaleString()} (${order.status || 'unknown'})`,
           at: order.created_at,
@@ -523,20 +549,20 @@ export async function GET(request: Request) {
       }))
 
     const categoryCounts: Record<string, number> = {}
-    courses.forEach((course) => {
+    allCourses.forEach((course) => {
       const category = (course.category || 'Other').trim() || 'Other'
       categoryCounts[category] = (categoryCounts[category] || 0) + 1
     })
 
     const courseDistribution = buildPercentDistribution(categoryCounts)
 
-    const studentProfileRows = profiles
-      .filter((profile) => profile.role?.toLowerCase() === 'lawyer')
+    const studentProfileRows = allProfiles
+      .filter((profile) => (profile.role?.toLowerCase() === 'student'))
       .slice()
       .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime())
 
     const enrollmentsByUser = new Map<string, EnrollmentRow[]>()
-    enrollments.forEach((enrollment) => {
+    allEnrollments.forEach((enrollment) => {
       const bucket = enrollmentsByUser.get(enrollment.user_id) ?? []
       bucket.push(enrollment)
       enrollmentsByUser.set(enrollment.user_id, bucket)
@@ -584,9 +610,9 @@ export async function GET(request: Request) {
       }
     })
 
-    const coursePerformance: CoursePerformance[] = courses
+    const coursePerformance: CoursePerformance[] = allCourses
       .map((course) => {
-        const courseEnrollments = enrollments.filter((enrollment) => enrollment.course_id === course.id)
+        const courseEnrollments = allEnrollments.filter((enrollment) => enrollment.course_id === course.id)
         const completedForCourse = courseEnrollments.filter((enrollment) => {
           const progress = progressById.get(enrollment.progress_id ?? '') ?? progressByEnrollmentId.get(enrollment.id)
           return progress?.completed === true || (typeof progress?.progress_percentage === 'number' && progress.progress_percentage >= 100)
@@ -603,18 +629,18 @@ export async function GET(request: Request) {
       .slice(0, 5)
 
     const memberRoleCounts: Record<string, number> = {}
-    profiles.forEach((profile) => {
+    allProfiles.forEach((profile) => {
       const role = (profile.role || 'unknown').toLowerCase()
       if (role === 'admin') {
         return
       }
 
-      const displayRole = role === 'lawyer' ? 'Students' : capitalize(role)
+      const displayRole = (role === 'student') ? 'Students' : capitalize(role)
       memberRoleCounts[displayRole] = (memberRoleCounts[displayRole] || 0) + 1
     })
 
     const paymentStatusCounts: Record<string, number> = {}
-    orders.forEach((order) => {
+    allOrders.forEach((order) => {
       const status = (order.status || 'unknown').toLowerCase()
       const displayStatus = status === 'paid' ? 'Paid' : capitalize(status)
       paymentStatusCounts[displayStatus] = (paymentStatusCounts[displayStatus] || 0) + 1
@@ -641,10 +667,10 @@ export async function GET(request: Request) {
       },
       {
         label: 'Total Users',
-        value: profiles.filter((profile) => profile.role?.toLowerCase() !== 'admin').length.toLocaleString(),
+        value: allProfiles.filter((profile) => profile.role?.toLowerCase() !== 'admin').length.toLocaleString(),
         change: formatPercentChange(
-          profiles.filter((profile) => profile.role?.toLowerCase() !== 'admin' && getMonthKey(profile.created_at) === currentMonthKey).length,
-          profiles.filter((profile) => profile.role?.toLowerCase() !== 'admin' && getMonthKey(profile.created_at) === previousMonthKey).length
+          allProfiles.filter((profile) => profile.role?.toLowerCase() !== 'admin' && getMonthKey(profile.created_at) === currentMonthKey).length,
+          allProfiles.filter((profile) => profile.role?.toLowerCase() !== 'admin' && getMonthKey(profile.created_at) === previousMonthKey).length
         ),
         icon: '👥',
       },

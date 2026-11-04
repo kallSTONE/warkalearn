@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase'
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, getSession } from 'next-auth/react'
 
-type UserRole = 'lawyer' | 'mentor' | 'admin' | 'reviewer'
+type UserRole = 'student' | 'mentor' | 'admin' | 'reviewer'
 
 type SupabaseUser = {
   id: string
@@ -61,7 +61,7 @@ export function SupabaseProvider({
           user_metadata: {
             full_name: (session.user as any).fullName ?? session.user.name ?? '',
             avatar_url: (session.user as any).avatarUrl ?? session.user.image ?? '',
-            role: ((session.user as any).role as UserRole) ?? 'lawyer',
+            role: ((session.user as any).role as UserRole) ?? 'student',
           },
         })
       } else {

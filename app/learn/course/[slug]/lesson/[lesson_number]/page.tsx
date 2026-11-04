@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useLanguage } from "@/components/providers/language-provider"
 import { translate } from "@/lib/i18n"
@@ -61,7 +60,7 @@ export default function LessonPage() {
 
   const isAuthChecking = user === undefined
   const userRole = user?.user_metadata?.role
-  const isAuthorized = !!user && (userRole === "admin" || userRole === "lawyer" || userRole === "reviewer")
+  const isAuthorized = !!user && (userRole === "admin" || userRole === "student" || userRole === "reviewer")
 
   // ------------------------------
   // Auth check
@@ -73,7 +72,7 @@ export default function LessonPage() {
       return
     }
     const role = user.user_metadata?.role
-    if (role !== "admin" && role !== "lawyer" && role !== "reviewer") router.push("/")
+    if (role !== "admin" && role !== "student" && role !== "reviewer") router.push("/")
   }, [user, router])
 
   // ------------------------------
@@ -88,139 +87,32 @@ export default function LessonPage() {
     const load = async () => {
       setLoading(true)
 
-      // 1) Load course + lessons
-      const cached = localStorage.getItem(`course_lessons_${slug}`)
-      if (cached) {
-        try {
-          setCourseData(JSON.parse(cached))
-        } catch { }
-      }
+      try {
+        const res = await fetch(`/api/courses/${slug}/lesson/${lessonNumber}`, { cache: 'no-store' })
+        const data = await res.json()
 
-      const { data: courseDataRaw, error } = await supabase
-        .from("courses")
-        .select("id, title, lessons(*)")
-        .eq("slug", slug)
-        .single()
-
-      if (error || !courseDataRaw) {
-        console.warn("Error loading course/lessons:", error)
-        setLoading(false)
-        return
-      }
-
-      // Determine which lessons are completed for this user
-      const lessonIds: number[] = (courseDataRaw.lessons || []).map((l: any) => l.id)
-      let completedLessonIdSet = new Set<number>()
-      if (lessonIds.length > 0) {
-        const { data: completions, error: completionsError } = await supabase
-          .from("lesson_quiz_completions")
-          .select("lesson_id")
-          .in("lesson_id", lessonIds)
-          .eq("user_id", user.id)
-
-        if (completionsError) {
-          console.warn("Error loading lesson completions:", completionsError)
-        } else if (completions) {
-          completedLessonIdSet = new Set<number>(completions.map((c: any) => c.lesson_id))
-        }
-      }
-
-      const lessonsForSidebar = (courseDataRaw.lessons || [])
-        .sort((a: any, b: any) => a.step_order - b.step_order)
-        .map((l: any) => {
-          const isCompleted = completedLessonIdSet.has(l.id)
-          return {
-            id: l.id.toString(),
-            number: l.step_order,
-            title: l.title,
-            completed: isCompleted,
-            progress: isCompleted ? 100 : 0,
-            topics: normalizeTopics(l.topics),
+        if (!res.ok) {
+          console.warn("Error loading lesson:", data?.error)
+          if (res.status === 404 && lessonNumber !== 1) {
+            router.push(`/learn/course/${slug}/lesson/1`)
           }
-        })
+          setLoading(false)
+          return
+        }
 
-      const preparedCourseData = {
-        courseId: courseDataRaw.id.toString(),
-        lessons: lessonsForSidebar,
-      }
-
-      const { data: certificationData } = await supabase
-        .from("certification_settings")
-        .select("enabled")
-        .eq("course_id", courseDataRaw.id)
-        .maybeSingle()
-
-      setHasCertification(Boolean(certificationData?.enabled))
-
-      setCourseData(preparedCourseData)
-      localStorage.setItem(`course_lessons_${slug}`, JSON.stringify(preparedCourseData))
-
-      // 2) Current lesson
-      const lessonMatch = courseDataRaw.lessons.find((l: any) => l.step_order === lessonNumber)
-      if (!lessonMatch) {
-        router.push(`/learn/course/${slug}/lesson/1`)
+        setCourseData(data.courseData)
+        setHasCertification(Boolean(data.hasCertification))
+        setCurrentLesson(data.currentLesson)
+        setCurrentLessonId(data.currentLesson.id.toString())
+        setDownloads(data.downloads || [])
+        setQuiz(data.quiz)
+        setQuestions(data.questions || [])
+        setQuizCompleted(Boolean(data.quizCompleted))
+      } catch (err) {
+        console.error("Failed to load lesson:", err)
+      } finally {
         setLoading(false)
-        return
       }
-
-      setCurrentLesson({
-        id: lessonMatch.id.toString(),
-        title: lessonMatch.title,
-        summary: lessonMatch.description || "",
-        videoUrl: lessonMatch.video_url,
-        step_order: lessonMatch.step_order,
-        topics: normalizeTopics(lessonMatch.topics),
-      })
-      setCurrentLessonId(lessonMatch.id.toString())
-
-      // 2.5) Load downloads for lesson
-      const { data: downloadsData, error: downloadsError } = await supabase
-        .from("lesson_downloads")
-        .select("*")
-        .eq("lesson_id", lessonMatch.id)
-        .order("modified_at", { ascending: false })
-
-      if (downloadsError) {
-        console.warn("Error loading lesson downloads:", downloadsError)
-      }
-
-      setDownloads(downloadsData || [])
-
-      // 3) Load quiz for lesson
-      const { data: quizData } = await supabase
-        .from("quizzes")
-        .select("id, is_required")
-        .eq("lesson_id", lessonMatch.id)
-        .single()
-
-      if (quizData) {
-        setQuiz(quizData)
-
-        // Load questions
-        const { data: questionsData } = await supabase
-          .from("quiz_questions")
-          .select("questions")
-          .eq("quiz_id", quizData.id)
-          .single()
-
-        if (questionsData?.questions && Array.isArray(questionsData.questions)) {
-          setQuestions(questionsData.questions)
-        }
-
-        // Check if user already completed
-        const { data: completion } = await supabase
-          .from("lesson_quiz_completions")
-          .select("id")
-          .eq("lesson_id", lessonMatch.id)
-          .eq("user_id", user.id)
-          .maybeSingle()
-
-        if (completion?.id) {
-          setQuizCompleted(true)
-        }
-      }
-
-      setLoading(false)
     }
 
     load()

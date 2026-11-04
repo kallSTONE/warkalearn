@@ -1,16 +1,15 @@
 import fs from "fs/promises"
 import path from "path"
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib"
-import { getSupabaseAdminClient } from "@/lib/server/supabase-admin"
+import { db } from "@/db"
+import { certificates, profiles, courses, certificationSettings, users } from "@/db/schema"
+import { eq } from "drizzle-orm"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 const ELLIPSIS = "..."
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || ""
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || ""
 
 const centerTextX = (
   text: string,
@@ -54,60 +53,50 @@ export async function GET(
   { params }: { params: { code: string } }
 ) {
   try {
-    const supabase = (() => {
-      try {
-        return getSupabaseAdminClient()
-      } catch {
-        if (!supabaseUrl || !supabaseAnonKey) {
-          throw new Error("Supabase configuration is missing.")
-        }
-
-        return createClient(supabaseUrl, supabaseAnonKey)
-      }
-    })()
-
     const certificateCode = decodeURIComponent(params.code || "").trim()
     if (!certificateCode) {
       return NextResponse.json({ error: "Certificate code is required." }, { status: 400 })
     }
 
-    const { data: certificate, error: certificateError } = await supabase
-      .from("certificates")
-      .select("id, user_id, course_id, certificate_code, verification_url, status, issued_at, pass_score, attempt_id")
-      .eq("certificate_code", certificateCode)
-      .maybeSingle()
+    const certificate = await db.query.certificates.findFirst({
+      where: eq(certificates.certificateCode, certificateCode),
+    })
 
-    if (certificateError || !certificate || certificate.status !== "active") {
+    if (!certificate || certificate.status !== "active") {
       return NextResponse.json({ error: "Certificate not found." }, { status: 404 })
     }
 
-    const [{ data: profile }, { data: course }, { data: settings }] = await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", certificate.user_id).maybeSingle(),
-      supabase.from("courses").select("title, slug").eq("id", certificate.course_id).maybeSingle(),
-      supabase
-        .from("certification_settings")
-        .select("certificate_title, issuer_name, logo_path")
-        .eq("course_id", certificate.course_id)
-        .maybeSingle(),
+    const [profile, course, settings, user] = await Promise.all([
+      db.query.profiles.findFirst({
+        where: eq(profiles.id, certificate.userId),
+        columns: { fullName: true },
+      }),
+      db.query.courses.findFirst({
+        where: eq(courses.id, certificate.courseId),
+        columns: { title: true, slug: true },
+      }),
+      db.query.certificationSettings.findFirst({
+        where: eq(certificationSettings.courseId, certificate.courseId),
+        columns: { certificateTitle: true, issuerName: true, logoPath: true },
+      }),
+      db.query.users.findFirst({
+        where: eq(users.id, certificate.userId),
+        columns: { name: true, email: true },
+      }),
     ])
 
-    const userData = "admin" in supabase.auth
-      ? await supabase.auth.admin.getUserById(certificate.user_id).then((response) => response.data)
-      : null
+    const emailFallback = user?.email ? deriveNameFromEmail(user.email) : ""
+    const studentName =
+      profile?.fullName?.trim() ||
+      user?.name?.trim() ||
+      emailFallback ||
+      "Verified Learner"
 
-    const metadata = userData?.user?.user_metadata as Record<string, unknown> | undefined
-    const metadataName =
-      (typeof metadata?.full_name === "string" && metadata.full_name.trim()) ||
-      (typeof metadata?.name === "string" && metadata.name.trim()) ||
-      ""
-    const emailFallback = userData?.user?.email ? deriveNameFromEmail(userData.user.email) : ""
-
-    const studentName = profile?.full_name?.trim() || metadataName || emailFallback || "Verified Learner"
     const courseTitle = course?.title?.trim() || "Course"
-    const certificateTitle = settings?.certificate_title?.trim() || "Course Certification"
-    const issuerName = settings?.issuer_name?.trim() || "Neway"
-    const logoPath = settings?.logo_path || "/assets/images/warkalogo.png"
-    const issueDate = new Date(certificate.issued_at).toLocaleDateString("en-US", {
+    const certificateTitle = settings?.certificateTitle?.trim() || "Course Certification"
+    const issuerName = settings?.issuerName?.trim() || "Neway"
+    const logoPath = settings?.logoPath || "/assets/images/warkalogo.png"
+    const issueDate = new Date(certificate.issuedAt).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -137,7 +126,7 @@ export async function GET(
     const safeCertificateTitle = fitText(certificateTitle, 22, contentWidth, boldFont)
     const safeStudentName = fitText(studentName, 28, contentWidth, boldFont)
     const safeCourseTitle = fitText(courseTitle, 21, contentWidth, boldFont)
-    const safeVerificationUrl = fitText(certificate.verification_url, 10, width - 250, regularFont)
+    const safeVerificationUrl = fitText(certificate.verificationUrl, 10, width - 250, regularFont)
 
     // Background
     page.drawRectangle({ x: 0, y: 0, width, height, color: rgb(0.98, 0.98, 0.975) })
@@ -158,158 +147,135 @@ export async function GET(
 
     page.drawText(issuerName.toUpperCase(), {
       x: width - 170,
-      y: height - 72,
-      size: 10,
+      y: height - 68,
+      size: 9.5,
       font: boldFont,
-      color: rgb(0.33, 0.35, 0.4),
+      color: rgb(0.35, 0.39, 0.46),
     })
 
+    const titleX = centerTextX(safeCertificateTitle, 22, boldFont, width, contentLeft, contentRight)
     page.drawText(safeCertificateTitle, {
-      x: centerTextX(safeCertificateTitle, 22, boldFont, width, contentLeft, contentRight),
-      y: height - 160,
+      x: titleX,
+      y: height - 146,
       size: 22,
       font: boldFont,
-      color: rgb(0.12, 0.14, 0.18),
+      color: rgb(0.1, 0.13, 0.18),
     })
 
-    page.drawText("This certifies that", {
-      x: centerTextX("This certifies that", 13, italicFont, width, contentLeft, contentRight),
-      y: height - 210,
-      size: 13,
-      font: italicFont,
-      color: rgb(0.4, 0.42, 0.46),
+    const subtitleText = "THIS IS PROUDLY PRESENTED TO"
+    const subtitleX = centerTextX(subtitleText, 10, regularFont, width, contentLeft, contentRight)
+    page.drawText(subtitleText, {
+      x: subtitleX,
+      y: height - 188,
+      size: 10,
+      font: regularFont,
+      color: rgb(0.42, 0.46, 0.54),
     })
 
+    const studentX = centerTextX(safeStudentName, 28, boldFont, width, contentLeft, contentRight)
     page.drawText(safeStudentName, {
-      x: centerTextX(safeStudentName, 28, boldFont, width, contentLeft, contentRight),
-      y: height - 255,
+      x: studentX,
+      y: height - 232,
       size: 28,
       font: boldFont,
-      color: rgb(0.08, 0.1, 0.13),
+      color: rgb(0.12, 0.16, 0.22),
     })
 
-    const completionLine = "has successfully completed and passed the certification exam for"
+    const completionLine = "for successfully completing the course requirements of"
+    const completionX = centerTextX(completionLine, 11, regularFont, width, contentLeft, contentRight)
     page.drawText(completionLine, {
-      x: centerTextX(completionLine, 12, regularFont, width, contentLeft, contentRight),
-      y: height - 295,
-      size: 12,
+      x: completionX,
+      y: height - 270,
+      size: 11,
       font: regularFont,
-      color: rgb(0.35, 0.38, 0.42),
+      color: rgb(0.35, 0.39, 0.46),
     })
 
+    const courseX = centerTextX(safeCourseTitle, 21, boldFont, width, contentLeft, contentRight)
     page.drawText(safeCourseTitle, {
-      x: centerTextX(safeCourseTitle, 21, boldFont, width, contentLeft, contentRight),
-      y: height - 325,
+      x: courseX,
+      y: height - 306,
       size: 21,
       font: boldFont,
-      color: rgb(0.12, 0.14, 0.18),
+      color: rgb(0.15, 0.23, 0.38),
     })
 
-    page.drawText(`Issued on ${issueDate}`, {
-      x: 70,
-      y: 86,
-      size: 11,
-      font: regularFont,
-      color: rgb(0.35, 0.38, 0.42),
-    })
-
-    page.drawText(`Certificate ID: ${certificate.certificate_code}`, {
-      x: width - 280,
-      y: 86,
-      size: 11,
-      font: regularFont,
-      color: rgb(0.35, 0.38, 0.42),
-    })
-
-    page.drawText("Verification URL", {
-      x: 70,
-      y: 60,
+    const note = `This official credential acknowledges successful evaluation with a passing standard of ${certificate.passScore}%.`
+    const safeNote = fitText(note, 10, width - 180, italicFont)
+    const noteX = centerTextX(safeNote, 10, italicFont, width, contentLeft, contentRight)
+    page.drawText(safeNote, {
+      x: noteX,
+      y: height - 340,
       size: 10,
-      font: boldFont,
-      color: rgb(0.12, 0.14, 0.18),
-    })
-    page.drawText(safeVerificationUrl, {
-      x: 170,
-      y: 60,
-      size: 10,
-      font: regularFont,
-      color: rgb(0.1, 0.35, 0.6),
-    })
-
-    // Signature lines
-    page.drawLine({
-      start: { x: 150, y: 148 },
-      end: { x: 320, y: 148 },
-      thickness: 0.8,
-      color: rgb(0.45, 0.48, 0.52),
-    })
-    page.drawLine({
-      start: { x: width - 320, y: 148 },
-      end: { x: width - 150, y: 148 },
-      thickness: 0.8,
-      color: rgb(0.45, 0.48, 0.52),
-    })
-
-    // Faux handwritten signatures
-    page.drawText("K. Tadesse", {
-      x: 190,
-      y: 158,
-      size: 17,
       font: italicFont,
-      color: rgb(0.08, 0.1, 0.13),
-    })
-    page.drawText("N. Learn", {
-      x: width - 275,
-      y: 158,
-      size: 17,
-      font: italicFont,
-      color: rgb(0.08, 0.1, 0.13),
+      color: rgb(0.45, 0.49, 0.57),
     })
 
-    page.drawText("Kalab Tadesse", {
-      x: 186,
-      y: 134,
+    // Footer info
+    page.drawText("CERTIFICATE ID", {
+      x: 74,
+      y: 92,
+      size: 8.5,
+      font: boldFont,
+      color: rgb(0.45, 0.49, 0.57),
+    })
+    page.drawText(certificate.certificateCode, {
+      x: 74,
+      y: 78,
       size: 11,
       font: boldFont,
-      color: rgb(0.12, 0.14, 0.18),
-    })
-    page.drawText("Founder, Neway Learn", {
-      x: 170,
-      y: 120,
-      size: 10,
-      font: regularFont,
-      color: rgb(0.35, 0.38, 0.42),
+      color: rgb(0.15, 0.23, 0.38),
     })
 
-    page.drawText("Kalab Tadesse", {
-      x: width - 284,
-      y: 134,
-      size: 11,
+    page.drawText("ISSUED ON", {
+      x: 270,
+      y: 92,
+      size: 8.5,
       font: boldFont,
-      color: rgb(0.12, 0.14, 0.18),
+      color: rgb(0.45, 0.49, 0.57),
     })
-    page.drawText("Founder, Neway Learn", {
-      x: width - 300,
-      y: 120,
-      size: 10,
+    page.drawText(issueDate, {
+      x: 270,
+      y: 78,
+      size: 10.5,
       font: regularFont,
-      color: rgb(0.35, 0.38, 0.42),
+      color: rgb(0.15, 0.23, 0.38),
+    })
+
+    page.drawText("AUTHORIZED ISSUER", {
+      x: width - 215,
+      y: 92,
+      size: 8.5,
+      font: boldFont,
+      color: rgb(0.45, 0.49, 0.57),
+    })
+    page.drawText(issuerName, {
+      x: width - 215,
+      y: 78,
+      size: 10.5,
+      font: boldFont,
+      color: rgb(0.15, 0.23, 0.38),
+    })
+
+    page.drawText(`Verify at: ${safeVerificationUrl}`, {
+      x: 74,
+      y: 46,
+      size: 8.5,
+      font: regularFont,
+      color: rgb(0.45, 0.49, 0.57),
     })
 
     const pdfBytes = await pdf.save()
-
-    const pdfBody = new ArrayBuffer(pdfBytes.length)
-    new Uint8Array(pdfBody).set(pdfBytes)
-
-    return new NextResponse(pdfBody, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="certificate-${certificate.certificate_code}.pdf"`,
-        "Cache-Control": "no-store",
+        "Content-Disposition": `inline; filename="certificate-${certificate.certificateCode}.pdf"`,
+        "Cache-Control": "public, max-age=3600",
       },
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Unable to generate certificate." }, { status: 500 })
+  } catch (err: any) {
+    console.error("Certificate PDF generation error:", err)
+    return NextResponse.json({ error: "Failed to generate certificate PDF." }, { status: 500 })
   }
 }

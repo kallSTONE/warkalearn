@@ -48,7 +48,7 @@ type ShopPurchaseOrder = {
 
 export default function OrdersPage() {
     const router = useRouter()
-    const { user, loading, supabase } = useSupabase()
+    const { user, loading } = useSupabase()
     const { locale } = useLanguage()
     const { toast } = useToast()
     const t = (key: string, fallback?: string) => translate(locale, key, fallback)
@@ -66,13 +66,10 @@ export default function OrdersPage() {
         updateQuantity,
         removeItem,
         checkout,
-    } = useShopCart({
-        supabase,
-        userId: user?.id,
-    })
+    } = useShopCart({ userId: user?.id })
 
     useEffect(() => {
-        if (!loading && (!user || user.user_metadata?.role !== "lawyer")) {
+        if (!loading && (!user || (user.user_metadata?.role !== "student" && user.user_metadata?.role !== "admin"))) {
             router.replace("/login")
         }
     }, [loading, user, router])
@@ -82,90 +79,22 @@ export default function OrdersPage() {
 
         const loadOrders = async () => {
             setIsLoading(true)
-            const { data: courseData, error: courseError } = await supabase
-                .from("course_enrollments")
-                .select(
-                    `
-                    id,
-                    enrolled_at,
-                    amount_paid,
-                    courses (
-                        id,
-                        title,
-                        slug,
-                        hero_image,
-                        image_url,
-                        price,
-                        is_paid
-                    )
-                `
-                )
-                .eq("user_id", user.id)
-                .order("enrolled_at", { ascending: false })
-
-            const { data: shopData, error: shopError } = await supabase
-                .from("shop_orders")
-                .select(
-                    `
-                    id,
-                    created_at,
-                    total_amount,
-                    status,
-                    payment_method,
-                    shop_order_items (
-                        id,
-                        quantity,
-                        line_total,
-                        product_name,
-                        shop_products (
-                            slug
-                        )
-                    )
-                `
-                )
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false })
-
-            if (courseError) {
-                console.error("Error loading course enrollments:", courseError)
+            try {
+                const res = await fetch('/api/orders')
+                const json = await res.json()
+                if (res.ok) {
+                    setItems((json.enrollments || []).filter((row: PaidEnrollment) => row.course?.is_paid))
+                    setShopOrders(json.shopOrders || [])
+                }
+            } catch (err) {
+                console.error('Error loading orders:', err)
+            } finally {
+                setIsLoading(false)
             }
-
-            if (shopError) {
-                console.error("Error loading shop purchases:", shopError)
-            }
-
-            const normalized = (courseData || [])
-                .map((row: any) => ({
-                    enrollment_id: row.id,
-                    enrolled_at: row.enrolled_at,
-                    amount_paid: Number(row.amount_paid ?? row.courses?.price ?? 0),
-                    course: row.courses,
-                }))
-                .filter((row: PaidEnrollment) => row.course?.is_paid)
-
-            setItems(normalized)
-
-            const normalizedShopOrders: ShopPurchaseOrder[] = (shopData || []).map((row: any) => ({
-                id: row.id,
-                created_at: row.created_at,
-                total_amount: Number(row.total_amount ?? 0),
-                status: row.status,
-                payment_method: row.payment_method,
-                items: (row.shop_order_items || []).map((item: any) => ({
-                    id: item.id,
-                    quantity: Number(item.quantity ?? 0),
-                    line_total: Number(item.line_total ?? 0),
-                    product_name: item.product_name,
-                    slug: item.shop_products?.slug ?? null,
-                })),
-            }))
-
-            setShopOrders(normalizedShopOrders)
-            setIsLoading(false)
         }
 
         loadOrders()
-    }, [user, supabase])
+    }, [user])
 
     const totalSpent = useMemo(() => {
         return items.reduce((sum, item) => sum + (Number((item as any).amount_paid ?? item.course.price ?? 0) || 0), 0)

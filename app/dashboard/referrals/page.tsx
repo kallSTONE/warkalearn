@@ -55,7 +55,7 @@ type RewardCode = {
 
 export default function ReferralRewardsPage() {
     const router = useRouter()
-    const { user, loading, supabase } = useSupabase()
+    const { user, loading } = useSupabase()
     const { locale } = useLanguage()
     const t = (key: string, fallback?: string) => translate(locale, key, fallback)
     const [copiedType, setCopiedType] = useState<'code' | 'link' | null>(null)
@@ -69,7 +69,7 @@ export default function ReferralRewardsPage() {
     const [selectedRewardCourseId, setSelectedRewardCourseId] = useState<number | null>(null)
 
     const loadReferralData = useCallback(async () => {
-        if (!user || user.user_metadata?.role !== 'lawyer') {
+        if (!user || (user.user_metadata?.role !== 'student' && user.user_metadata?.role !== 'admin')) {
             return
         }
 
@@ -77,34 +77,23 @@ export default function ReferralRewardsPage() {
         setPageError(null)
 
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
-
-            const accessToken = session?.access_token
-            if (!accessToken) {
-                throw new Error(t('payment.error.missingToken', 'Missing session token.'))
-            }
-
+            
             const requestTs = Date.now()
 
             const [referralResponse, rewardCodesResponse, rewardCoursesResponse] = await Promise.all([
                 fetch(`/api/referrals/me?_ts=${requestTs}`, {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
+                                            },
                     cache: 'no-store',
                 }),
                 fetch(`/api/referrals/reward-codes?_ts=${requestTs}`, {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
+                                            },
                     cache: 'no-store',
                 }),
                 fetch(`/api/referrals/reward-courses?_ts=${requestTs}`, {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
+                                            },
                     cache: 'no-store',
                 }),
             ])
@@ -143,7 +132,7 @@ export default function ReferralRewardsPage() {
         } finally {
             setIsDataLoading(false)
         }
-    }, [user, supabase])
+    }, [user])
 
     useEffect(() => {
         if (!loading) {
@@ -152,7 +141,7 @@ export default function ReferralRewardsPage() {
                 return
             }
 
-            if (user.user_metadata?.role !== 'lawyer') {
+            if (user.user_metadata?.role !== 'student') {
                 router.replace('/dashboard')
             }
         }
@@ -170,7 +159,7 @@ export default function ReferralRewardsPage() {
         )
     }
 
-    if (!user || user.user_metadata?.role !== 'lawyer') return null
+    if (!user || (user.user_metadata?.role !== 'student')) return null
 
     if (!referralData) {
         return (
@@ -229,15 +218,7 @@ export default function ReferralRewardsPage() {
         setRewardRequestMessage(null)
 
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
-
-            const accessToken = session?.access_token
-            if (!accessToken) {
-                throw new Error(t('payment.error.missingToken', 'Missing session token.'))
-            }
-
+            
             if (!selectedRewardCourseId) {
                 throw new Error(t('referrals.activation.selectCourse', 'Please select a course before submitting your request.'))
             }
@@ -245,8 +226,7 @@ export default function ReferralRewardsPage() {
             const response = await fetch('/api/referrals/request-reward', {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
+                                        'Content-Type': 'application/json',
                 },
                 cache: 'no-store',
                 body: JSON.stringify({ courseId: selectedRewardCourseId }),

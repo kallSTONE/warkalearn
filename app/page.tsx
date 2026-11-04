@@ -6,7 +6,9 @@ import SuccessStories from '@/components/home/success-stories'
 import NewsletterSignup from '@/components/home/newsletter-signup'
 import { getSiteSettings } from '@/lib/site-settings'
 import ProgramSpotlightModal from '@/components/programs/program-spotlight-modal'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import { liveClasses } from '@/db/schema'
+import { asc, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import {
   DEFAULT_LOCALE, 
@@ -56,13 +58,32 @@ export default async function Home() {
   const heroCtaLink = settings?.hero_cta_link ?? '/learn'
   const heroVideoId = settings?.hero_video_id ?? 'mSs5scC7hsI'
   
-  const admin = getSupabaseAdminClient() 
-  const { data: liveClassRows } = await admin
-    .from('live_classes')
-    .select('id, slug, title, description, instructor_name, meeting_platform, start_at, end_at, price, currency, registration_status, cover_image_url')
-    .eq('status', 'published')
-    .order('start_at', { ascending: true }) 
-    .limit(3)
+  let liveClassRows: any[] = []
+  try {
+    const rows = await db
+      .select()
+      .from(liveClasses)
+      .where(eq(liveClasses.status, 'published'))
+      .orderBy(asc(liveClasses.startAt))
+      .limit(3)
+
+    liveClassRows = rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      description: r.description,
+      instructor_name: r.instructorName,
+      meeting_platform: r.meetingPlatform,
+      start_at: r.startAt?.toISOString(),
+      end_at: r.endAt?.toISOString() ?? null,
+      price: Number(r.price ?? 0),
+      currency: r.currency,
+      registration_status: r.registrationStatus,
+      cover_image_url: r.coverImageUrl,
+    }))
+  } catch (err) {
+    console.error('Failed to load live classes on home page:', err)
+  }
 
   const liveClassDemos: HomeLiveClass[] =
     (liveClassRows as HomeLiveClass[] | null | undefined)?.length

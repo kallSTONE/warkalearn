@@ -1,183 +1,158 @@
-import { supabase } from './supabase'
+import { db } from '@/db'
+import {
+    programs,
+    programCourses,
+    programEnrollments,
+    courseEnrollments,
+    courses,
+} from '@/db/schema'
+import { eq, desc, asc, and, inArray } from 'drizzle-orm'
 import type { Course, Program, ProgramCourse } from './types'
 
-type ProgramCourseRow = {
-    sort_order: number | null
-    is_required: boolean | null
-    courses: {
-        id: number
-        title: string
-        slug: string
-        description: string | null
-        hero_image: string | null
-        category: string | null
-        level: string | null
-        estimated_hours: number | null
-        requirements: string | null
-        skills: string | null
-        students: number | null
-        rating: number | null
-        featured: boolean | null
-    } | null
-}
-
-type ProgramWithCoursesRow = {
-    id: string
-    program_courses: ProgramCourseRow[] | null
-}
-
-const mapCourse = (course: ProgramCourseRow['courses']): Course => {
+const mapCourse = (course: any): Course => {
     return {
         id: course?.id ?? 0,
         title: course?.title ?? '',
         slug: course?.slug ?? '',
         description: course?.description ?? '',
-        hero_image: course?.hero_image ?? '',
+        hero_image: course?.heroImage ?? course?.hero_image ?? '',
         category: course?.category ?? '',
         level: course?.level ?? '',
-        estimated_hours: course?.estimated_hours ?? 0,
+        estimated_hours: course?.estimatedHours ?? course?.estimated_hours ?? 0,
         requirements: course?.requirements ?? '',
         skills: course?.skills ?? '',
         students: course?.students ?? 0,
-        rating: course?.rating ?? 0,
+        rating: Number(course?.rating ?? 0),
         featured: course?.featured ?? false,
         lessons: [],
         reviews: [],
     }
 }
 
-const mapProgramCourses = (rows: ProgramCourseRow[] | null | undefined): ProgramCourse[] => {
-    if (!rows || rows.length === 0) {
-        return []
-    }
-
-    return rows
-        .filter((row) => row.courses)
-        .map((row) => ({
-            course: mapCourse(row.courses),
-            sort_order: row.sort_order ?? 0,
-            is_required: row.is_required ?? false,
-        }))
-}
-
 export const getPublishedPrograms = async (): Promise<Program[]> => {
-    const { data, error } = await supabase
-        .from('programs')
-        .select('id')
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
+    try {
+        const rows = await db.query.programs.findMany({
+            where: eq(programs.status, 'published'),
+            orderBy: [desc(programs.createdAt)],
+            columns: {
+                id: true,
+            },
+        })
 
-    if (error) {
+        return rows.map((program) => ({
+            id: program.id,
+            courses: [],
+        }))
+    } catch (error) {
+        console.error('getPublishedPrograms error:', error)
         throw error
     }
-
-    if (!data || data.length === 0) {
-        return []
-    }
-
-    return data.map((program) => ({
-        id: program.id,
-        courses: [],
-    }))
 }
 
 export const getProgramBySlug = async (slug: string): Promise<Program | null> => {
-    const { data, error } = await supabase
-        .from('programs')
-        .select(
-            'id, program_courses (sort_order, is_required, courses (id, title, slug, description, hero_image, category, level, estimated_hours, requirements, skills, students, rating, featured))'
-        )
-        .eq('slug', slug)
-        .order('sort_order', { foreignTable: 'program_courses', ascending: true })
-        .maybeSingle()
+    try {
+        const program = await db.query.programs.findFirst({
+            where: eq(programs.slug, slug),
+            with: {
+                programCourses: {
+                    orderBy: (pc, { asc }) => [asc(pc.sortOrder)],
+                    with: {
+                        course: true,
+                    },
+                },
+            },
+        })
 
-    if (error) {
+        if (!program) {
+            return null
+        }
+
+        const mappedCourses: ProgramCourse[] = (program.programCourses || [])
+            .filter((pc) => pc.course)
+            .map((pc) => ({
+                course: mapCourse(pc.course),
+                sort_order: pc.sortOrder ?? 0,
+                is_required: pc.isRequired ?? false,
+            }))
+
+        return {
+            id: program.id,
+            courses: mappedCourses,
+        }
+    } catch (error) {
+        console.error('getProgramBySlug error:', error)
         throw error
-    }
-
-    if (!data) {
-        return null
-    }
-
-    const typedProgram = data as ProgramWithCoursesRow
-
-    return {
-        id: typedProgram.id,
-        courses: mapProgramCourses(typedProgram.program_courses),
     }
 }
 
 export const enrollInProgram = async (programId: string, userId: string): Promise<void> => {
-    const { data: existingEnrollment, error: enrollmentError } = await supabase
-        .from('program_enrollments')
-        .select('id')
-        .eq('program_id', programId)
-        .eq('user_id', userId)
-        .maybeSingle()
+    try {
+        await db.transaction(async (tx) => {
+            // 1. Ensure program enrollment exists
+            const existingEnrollment = await tx.query.programEnrollments.findFirst({
+                where: and(
+                    eq(programEnrollments.programId, programId),
+                    eq(programEnrollments.userId, userId)
+                ),
+            })
 
-    if (enrollmentError) {
-        throw enrollmentError
-    }
+            if (!existingEnrollment) {
+                await tx.insert(programEnrollments).values({
+                    programId,
+                    userId,
+                    status: 'active',
+                    progressPercentage: '0',
+                })
+            }
 
-    if (!existingEnrollment) {
-        const { error: insertError } = await supabase.from('program_enrollments').insert({
-            program_id: programId,
-            user_id: userId,
-            status: 'active',
-            progress_percentage: 0,
+            // 2. Fetch required courses in this program
+            const requiredCourses = await tx.query.programCourses.findMany({
+                where: and(
+                    eq(programCourses.programId, programId),
+                    eq(programCourses.isRequired, true)
+                ),
+                columns: {
+                    courseId: true,
+                },
+            })
+
+            const requiredCourseIds = requiredCourses.map((rc) => rc.courseId)
+            if (requiredCourseIds.length === 0) {
+                return
+            }
+
+            // 3. Find existing course enrollments
+            const existingCourseEnrollments = await tx.query.courseEnrollments.findMany({
+                where: and(
+                    eq(courseEnrollments.userId, userId),
+                    inArray(courseEnrollments.courseId, requiredCourseIds)
+                ),
+                columns: {
+                    courseId: true,
+                },
+            })
+
+            const enrolledCourseIds = new Set(
+                existingCourseEnrollments.map((row) => row.courseId)
+            )
+
+            const missingCourseIds = requiredCourseIds.filter(
+                (courseId) => !enrolledCourseIds.has(courseId)
+            )
+
+            // 4. Enroll in missing required courses
+            for (const courseId of missingCourseIds) {
+                await tx
+                    .insert(courseEnrollments)
+                    .values({
+                        courseId,
+                        userId,
+                    })
+                    .onConflictDoNothing()
+            }
         })
-
-        if (insertError) {
-            throw insertError
-        }
-    }
-
-    const { data: requiredCourses, error: requiredError } = await supabase
-        .from('program_courses')
-        .select('course_id, is_required')
-        .eq('program_id', programId)
-        .eq('is_required', true)
-
-    if (requiredError) {
-        throw requiredError
-    }
-
-    const requiredCourseIds = (requiredCourses ?? []).map((row) => row.course_id)
-
-    if (requiredCourseIds.length === 0) {
-        return
-    }
-
-    const { data: existingCourseEnrollments, error: courseEnrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select('course_id')
-        .eq('user_id', userId)
-        .in('course_id', requiredCourseIds)
-
-    if (courseEnrollmentsError) {
-        throw courseEnrollmentsError
-    }
-
-    const enrolledCourseIds = new Set(
-        (existingCourseEnrollments ?? []).map((row) => row.course_id)
-    )
-
-    const missingCourseIds = requiredCourseIds.filter((courseId) => !enrolledCourseIds.has(courseId))
-
-    if (missingCourseIds.length === 0) {
-        return
-    }
-
-    const enrollmentsToInsert = missingCourseIds.map((courseId) => ({
-        course_id: courseId,
-        user_id: userId,
-    }))
-
-    const { error: upsertError } = await supabase
-        .from('course_enrollments')
-        .upsert(enrollmentsToInsert, { onConflict: 'user_id,course_id' })
-
-    if (upsertError) {
-        throw upsertError
+    } catch (error) {
+        console.error('enrollInProgram error:', error)
+        throw error
     }
 }

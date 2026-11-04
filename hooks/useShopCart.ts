@@ -1,17 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/database.types'
 import type { ShopCartItem } from '@/lib/shop'
-import { getCartTotals, upsertToCart } from '@/lib/shop'
- 
+import { getCartTotals } from '@/lib/shop'
+
 type UseShopCartArgs = {
-  supabase: SupabaseClient<Database>
+  supabase?: any
   userId?: string
 }
 
-export function useShopCart({ supabase, userId }: UseShopCartArgs) {
+export function useShopCart({ userId }: UseShopCartArgs = {}) {
   const [items, setItems] = useState<ShopCartItem[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -22,33 +20,21 @@ export function useShopCart({ supabase, userId }: UseShopCartArgs) {
     }
 
     setLoading(true)
-
-    const { data, error } = await supabase
-      .from('shop_cart_items')
-      .select(
-        `
-        id,
-        user_id,
-        product_id,
-        quantity,
-        created_at,
-        updated_at,
-        shop_products (*)
-      `
-      )
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Failed to load cart:', error)
+    try {
+      const res = await fetch('/api/shop/cart', { cache: 'no-store' })
+      if (!res.ok) {
+        setItems([])
+        return
+      }
+      const json = await res.json()
+      setItems((json?.data as ShopCartItem[]) || [])
+    } catch (err) {
+      console.error('Failed to load cart:', err)
       setItems([])
+    } finally {
       setLoading(false)
-      return
     }
-
-    setItems((data as ShopCartItem[]) || [])
-    setLoading(false)
-  }, [supabase, userId])
+  }, [userId])
 
   useEffect(() => {
     void refreshCart()
@@ -60,38 +46,42 @@ export function useShopCart({ supabase, userId }: UseShopCartArgs) {
         throw new Error('Please log in to add products to cart.')
       }
 
-      await upsertToCart(supabase, userId, productId, quantity)
+      const res = await fetch('/api/shop/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, quantity }),
+      })
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json?.error || 'Failed to add item to cart.')
+      }
+
       await refreshCart()
     },
-    [refreshCart, supabase, userId]
-  ) 
+    [refreshCart, userId]
+  )
 
   const updateQuantity = useCallback(
     async (itemId: string, quantity: number) => {
       if (!userId) {
         throw new Error('Please log in to update cart.')
       }
- 
-      if (quantity <= 0) {
-        const { error } = await supabase.from('shop_cart_items').delete().eq('id', itemId)
-        if (error) {
-          throw error
-        }
-      } else {
-        const { error } = await supabase
-          .from('shop_cart_items')
-          .update({ quantity })
-          .eq('id', itemId)
-          .eq('user_id', userId)
 
-        if (error) {
-          throw error
-        }
+      const res = await fetch('/api/shop/cart', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, quantity }),
+      })
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json?.error || 'Failed to update item.')
       }
 
       await refreshCart()
     },
-    [refreshCart, supabase, userId]
+    [refreshCart, userId]
   )
 
   const removeItem = useCallback(
@@ -100,19 +90,18 @@ export function useShopCart({ supabase, userId }: UseShopCartArgs) {
         throw new Error('Please log in to update cart.')
       }
 
-      const { error } = await supabase
-        .from('shop_cart_items')
-        .delete()
-        .eq('id', itemId)
-        .eq('user_id', userId)
+      const res = await fetch(`/api/shop/cart?itemId=${itemId}`, {
+        method: 'DELETE',
+      })
 
-      if (error) {
-        throw error
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json?.error || 'Failed to delete item.')
       }
- 
+
       await refreshCart()
     },
-    [refreshCart, supabase, userId]
+    [refreshCart, userId]
   )
 
   const checkout = useCallback(async () => {
@@ -120,17 +109,20 @@ export function useShopCart({ supabase, userId }: UseShopCartArgs) {
       throw new Error('Please log in to checkout.')
     }
 
-    const { data, error } = await supabase.rpc('checkout_shop_cart', {
-      p_payment_method: 'fake_checkout',
+    const res = await fetch('/api/shop/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentMethod: 'fake_checkout' }),
     })
 
-    if (error) {
-      throw error
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(json?.error || 'Checkout failed.')
     }
 
     await refreshCart()
-    return data
-  }, [refreshCart, supabase, userId])
+    return json?.orderId
+  }, [refreshCart, userId])
 
   const totals = useMemo(() => getCartTotals(items), [items])
 

@@ -221,21 +221,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        const accessToken = session?.access_token
-        if (!accessToken) {
-          throw new Error("Missing session token.")
-        }
-
-        const response = await fetch("/api/admin/overview", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          cache: "no-store",
-        })
+        const response = await fetch("/api/admin/overview", { cache: "no-store" })
 
         const payload = await response.json().catch(() => ({}))
 

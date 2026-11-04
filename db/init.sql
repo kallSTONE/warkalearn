@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name   TEXT,
   avatar_url  TEXT,
   bio         TEXT,
-  role        TEXT DEFAULT 'lawyer',
+  role        TEXT DEFAULT 'student',
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now()
 );

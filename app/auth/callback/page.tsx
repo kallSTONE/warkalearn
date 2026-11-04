@@ -84,7 +84,7 @@ export default function AuthCallbackPage() {
                     console.error('Failed to read user profile role:', profileError)
                 }
 
-                const redirectPath = resolvePostLoginRedirect(profile?.role ?? 'lawyer')
+                const redirectPath = resolvePostLoginRedirect(profile?.role ?? 'student')
                 startLoading()
                 router.replace(redirectPath)
             } catch (error: any) {

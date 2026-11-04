@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       await tx.insert(profiles).values({
         id: newUser.id,
         fullName: userFullName,
-        role: 'lawyer',
+        role: 'student',
       })
 
       // Generate a referral code for this new user profile

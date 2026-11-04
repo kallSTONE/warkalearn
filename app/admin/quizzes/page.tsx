@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { supabase } from "@/lib/supabase"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -53,24 +52,26 @@ export default function AdminQuizzesPage() {
     useEffect(() => {
         const loadCourses = async () => {
             setLoading(true)
-            const { data, error } = await supabase
-                .from("courses")
-                .select("id, title, slug, lessons(id, title, step_order)")
-                .order("title", { ascending: true })
-
-            if (error) {
-                toast({ title: "Failed to load courses", description: error.message, variant: "destructive" })
+            try {
+                const res = await fetch('/api/admin/quizzes')
+                const data = await res.json()
+                if (!res.ok) {
+                    throw new Error(data?.error || 'Failed to load courses')
+                }
+                const normalized: Course[] = (data || []).map((c: any) => ({
+                    id: c.id.toString(),
+                    title: c.title,
+                    slug: c.slug,
+                    lessons: (c.lessons || [])
+                        .sort((a: any, b: any) => a.step_order - b.step_order)
+                        .map((l: any) => ({ id: l.id.toString(), title: l.title, step_order: l.step_order })),
+                }))
+                setCourses(normalized)
+            } catch (err: any) {
+                toast({ title: 'Failed to load courses', description: err.message, variant: 'destructive' })
+            } finally {
+                setLoading(false)
             }
-            const normalized: Course[] = (data || []).map((c: any) => ({
-                id: c.id.toString(),
-                title: c.title,
-                slug: c.slug,
-                lessons: (c.lessons || [])
-                    .sort((a: any, b: any) => a.step_order - b.step_order)
-                    .map((l: any) => ({ id: l.id.toString(), title: l.title, step_order: l.step_order })),
-            }))
-            setCourses(normalized)
-            setLoading(false)
         }
         loadCourses()
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,7 +92,6 @@ export default function AdminQuizzesPage() {
         if (!selectedLessonId) return
         const loadQuiz = async () => {
             setSaving(true)
-            // Load quiz meta
             const lessonId = Number(selectedLessonId)
             if (!Number.isFinite(lessonId)) {
                 setQuizId(null)
@@ -101,33 +101,26 @@ export default function AdminQuizzesPage() {
                 return
             }
 
-            const { data: quizMeta } = await supabase
-                .from("quizzes")
-                .select("id, is_required")
-                .eq("lesson_id", lessonId)
-                .maybeSingle()
-
-            if (quizMeta?.id) {
-                setQuizId(quizMeta.id)
-                setIsRequired(!!quizMeta.is_required)
-                // Load questions
-                const { data: qq } = await supabase
-                    .from("quiz_questions")
-                    .select("id, questions")
-                    .eq("quiz_id", quizMeta.id)
-                    .maybeSingle()
-
-                if (qq?.questions && Array.isArray(qq.questions)) {
-                    setQuestions(qq.questions as AdminQuestion[])
+            try {
+                const res = await fetch(`/api/admin/quizzes?lessonId=${lessonId}`)
+                const data = await res.json()
+                if (data?.quiz?.id) {
+                    setQuizId(data.quiz.id)
+                    setIsRequired(Boolean(data.quiz.is_required))
+                    setQuestions(Array.isArray(data.questions) ? data.questions : [])
                 } else {
+                    setQuizId(null)
+                    setIsRequired(false)
                     setQuestions([])
                 }
-            } else {
+            } catch (err: any) {
+                console.error('Failed to load quiz:', err)
                 setQuizId(null)
                 setIsRequired(false)
                 setQuestions([])
+            } finally {
+                setSaving(false)
             }
-            setSaving(false)
         }
         loadQuiz()
     }, [selectedLessonId])
@@ -171,76 +164,34 @@ export default function AdminQuizzesPage() {
     }
 
     const saveQuiz = async () => {
-        if (!selectedLessonId) {
-            toast({ title: "Select a lesson", description: "Choose a course and lesson first." })
+        if (!selectedCourseId || !selectedLessonId) {
+            toast({ title: "Select a lesson", description: "Pick a lesson before saving the quiz." })
             return
-        }
-        // Basic validation (use index loop to avoid downlevel iteration requirements)
-        for (let i = 0; i < questions.length; i++) {
-            const q = questions[i]
-            if (!q.question.trim()) {
-                toast({ title: `Question ${i + 1} missing text`, variant: "destructive" })
-                return
-            }
-            if (!q.options.length || q.options.some(o => !o.trim())) {
-                toast({ title: `Question ${i + 1} has empty options`, variant: "destructive" })
-                return
-            }
-            if (q.correct_option < 0 || q.correct_option >= q.options.length) {
-                toast({ title: `Question ${i + 1} invalid correct option index`, variant: "destructive" })
-                return
-            }
         }
 
         setSaving(true)
         try {
-            let currentQuizId = quizId
-            if (!currentQuizId) {
-                const lessonId = Number(selectedLessonId)
-                const courseId = Number(selectedCourseId)
-                if (!Number.isFinite(lessonId)) {
-                    throw new Error("Invalid lesson id")
-                }
-                if (!Number.isFinite(courseId)) {
-                    throw new Error("Invalid course id")
-                }
-                // Create quiz for lesson
-                const { data: created, error } = await supabase
-                    .from("quizzes")
-                    .insert({ course_id: courseId, lesson_id: lessonId, is_required: isRequired })
-                    .select("id")
-                    .single()
-                if (error) throw error
-                currentQuizId = created.id
-                setQuizId(created.id)
-            } else {
-                // Update quiz settings
-                const { error } = await supabase
-                    .from("quizzes")
-                    .update({ is_required: isRequired })
-                    .eq("id", currentQuizId)
-                if (error) throw error
+            const lessonId = Number(selectedLessonId)
+            const courseId = Number(selectedCourseId)
+
+            const res = await fetch('/api/admin/quizzes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lessonId,
+                    courseId,
+                    isRequired,
+                    questions,
+                }),
+            })
+
+            const data = await res.json()
+            if (!res.ok) {
+                throw new Error(data?.error || 'Failed to save quiz')
             }
 
-            // Upsert quiz questions
-            // Try update first; if none, insert
-            const { data: existingQQ } = await supabase
-                .from("quiz_questions")
-                .select("id")
-                .eq("quiz_id", currentQuizId!)
-                .maybeSingle()
-
-            if (existingQQ?.id) {
-                const { error: qErr } = await supabase
-                    .from("quiz_questions")
-                    .update({ questions })
-                    .eq("id", existingQQ.id)
-                if (qErr) throw qErr
-            } else {
-                const { error: qErr } = await supabase
-                    .from("quiz_questions")
-                    .insert({ quiz_id: currentQuizId!, questions })
-                if (qErr) throw qErr
+            if (data?.quiz?.id) {
+                setQuizId(data.quiz.id)
             }
 
             toast({ title: "Quiz saved", description: "Your changes are live." })
@@ -255,20 +206,18 @@ export default function AdminQuizzesPage() {
         if (!quizId) return
         setSaving(true)
         try {
-            const { error } = await supabase
-                .from("quizzes")
-                .delete()
-                .eq("id", quizId)
-            if (error) throw error
+            const res = await fetch(`/api/admin/quizzes?quizId=${quizId}`, {
+                method: 'DELETE',
+            })
+            const data = await res.json()
+            if (!res.ok) {
+                throw new Error(data?.error || 'Failed to delete quiz')
+            }
 
-            // Reset local state
             setQuizId(null)
             setIsRequired(false)
             setQuestions([])
-            setConfirmLessonValue("")
-            setConfirmPassword("")
-            setConfirmOpen(false)
-            toast({ title: "Quiz deleted", description: "Associated questions removed." })
+            toast({ title: "Quiz deleted", description: "The quiz has been removed." })
         } catch (e: any) {
             toast({ title: "Failed to delete quiz", description: e.message, variant: "destructive" })
         } finally {
@@ -329,7 +278,7 @@ export default function AdminQuizzesPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-semibold">Quiz Questions</h2>
-                        <p className="text-sm text-muted-foreground">One quiz per lesson. These display in the lawyer lesson page.</p>
+                        <p className="text-sm text-muted-foreground">One quiz per lesson. These display in the student lesson page.</p>
                     </div>
                     <Button className="w-full sm:w-auto" onClick={addQuestion} disabled={!selectedLessonId}>
                         <Plus className="w-4 h-4 mr-2" /> Add Question
@@ -400,7 +349,7 @@ export default function AdminQuizzesPage() {
             </Card>
 
             <div className="text-sm text-muted-foreground">
-                Tip: Lawyers see quizzes inline in the lesson page using the same schema: each question has text, options, and a correct option index.
+                Tip: Students see quizzes inline in the lesson page using the same schema: each question has text, options, and a correct option index.
             </div>
 
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

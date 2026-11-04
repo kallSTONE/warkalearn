@@ -55,7 +55,7 @@ type AdminOverviewResponse = {
 }
 
 export default function AdminReferralAnalysisPage() {
-    const { supabase } = useSupabase()
+    // useSupabase removed
     const [isReferralSystemActive, setIsReferralSystemActive] = useState(true)
     const [confirmOpen, setConfirmOpen] = useState(false)
     const [nextToggleValue, setNextToggleValue] = useState<boolean | null>(null)
@@ -73,28 +73,18 @@ export default function AdminReferralAnalysisPage() {
         setPageError(null)
 
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
-
-            const accessToken = session?.access_token
-            if (!accessToken) {
-                throw new Error("Missing session token.")
-            }
-
+            
             const requestTs = Date.now()
 
             const [overviewResponse, settingsResponse] = await Promise.all([
                 fetch(`/api/admin/referrals/overview?_ts=${requestTs}`, {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
+                                            },
                     cache: "no-store",
                 }),
                 fetch(`/api/admin/referrals/settings?_ts=${requestTs}`, {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
+                                            },
                     cache: "no-store",
                 }),
             ])
@@ -221,20 +211,11 @@ export default function AdminReferralAnalysisPage() {
             setIsSavingToggle(true)
 
             try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession()
-
-                const accessToken = session?.access_token
-                if (!accessToken) {
-                    throw new Error("Missing session token.")
-                }
-
+                
                 const response = await fetch("/api/admin/referrals/settings", {
                     method: "PATCH",
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        "Content-Type": "application/json",
+                                                "Content-Type": "application/json",
                     },
                     body: JSON.stringify({ isActive: nextToggleValue }),
                     cache: "no-store",
@@ -283,20 +264,11 @@ export default function AdminReferralAnalysisPage() {
                     return
                 }
 
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession()
-
-                const accessToken = session?.access_token
-                if (!accessToken) {
-                    throw new Error("Missing session token.")
-                }
-
+                
                 const response = await fetch(`/api/admin/referrals/reward-requests/${requestId}`, {
                     method: "PATCH",
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        "Content-Type": "application/json",
+                                                "Content-Type": "application/json",
                     },
                     cache: "no-store",
                     body: JSON.stringify({ action, adminNote }),

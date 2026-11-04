@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { BadgeCheck, Download, ShieldCheck, Sparkles } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -36,28 +35,22 @@ export default function CertificateVerificationPage() {
 
       setLoading(true)
       setError(null)
- 
-      const { data: certData, error: certError } = await supabase
-        .from("certificates")
-        .select("id, user_id, course_id, certificate_code, verification_url, status, issued_at, pdf_url")
-        .eq("certificate_code", decodeURIComponent(code))
-        .maybeSingle()
 
-      if (certError || !certData) {
-        setError("Certificate not found.")
+      try {
+        const res = await fetch(`/api/certificates/${encodeURIComponent(code)}`)
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data?.error || 'Certificate not found.')
+        }
+
+        setCertificate(data.certificate)
+        setStudentName(data.studentName || 'Verified Learner')
+        setCourseTitle(data.courseTitle || 'Course')
+      } catch (err: any) {
+        setError(err.message || 'Certificate not found.')
+      } finally {
         setLoading(false)
-        return
       }
-
-      const [{ data: profileData }, { data: courseData }] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", certData.user_id).maybeSingle(),
-        supabase.from("courses").select("title").eq("id", certData.course_id).maybeSingle(),
-      ])
-
-      setCertificate(certData as CertificateRecord)
-      setStudentName(profileData?.full_name?.trim() || "Verified Learner")
-      setCourseTitle(courseData?.title?.trim() || "Course")
-      setLoading(false)
     }
 
     load()

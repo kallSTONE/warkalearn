@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ChevronLeft, ChevronRight, Download } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { useLanguage } from "@/components/providers/language-provider"
 import { translate } from "@/lib/i18n"
      
@@ -110,18 +109,18 @@ export function LessonContent({
         if (!Number.isFinite(lessonId)) {
           throw new Error("Invalid lesson id")
         }
-        // 1️⃣ Record quiz completion (idempotent via unique constraint)
-        await supabase.from("lesson_quiz_completions").insert({
-          user_id: user.id,
-          lesson_id: lessonId,
-          quiz_id: quiz.id,
+        const res = await fetch('/api/quiz/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lessonId,
+            quizId: quiz.id,
+          }),
         })
 
-        // 2️⃣ Update course progress (DB decides if quiz is required)
-        await supabase.rpc("update_course_progress_for_quiz", {
-          p_user_id: user.id,
-          p_quiz_id: quiz.id,
-        })
+        if (!res.ok) {
+          throw new Error('Failed to record quiz completion')
+        }
 
         setQuizCompleted(true)
       }

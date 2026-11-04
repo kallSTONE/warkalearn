@@ -81,9 +81,9 @@ export default function Header() {
   const isAdminRoute = pathname?.startsWith('/admin')
   const { user, supabase } = useSupabase()
   const { locale, setLocale, t } = useLanguage()
-  const lawyerExcludedIds = ['community', 'about']
+  const studentExcludedIds = ['community', 'about']
   const adminExcludedIds = ['my-account']
-  const navigation = user?.user_metadata?.role === 'lawyer'
+  const navigation = (user?.user_metadata?.role === 'student')
     ? [...baseNavigation, { id: 'referral-rewards', labelKey: 'nav.referralRewards', fallback: 'Referral Rewards', href: '/dashboard/referrals' }]
     : baseNavigation
 
@@ -97,9 +97,9 @@ export default function Header() {
       return !adminExcludedIds.includes(item.id)
     }
 
-    // Lawyer → exclude specific links
-    if (user?.user_metadata?.role === 'lawyer') {
-      return !lawyerExcludedIds.includes(item.id)
+    // Student → exclude specific links
+    if ((user?.user_metadata?.role === 'student')) {
+      return !studentExcludedIds.includes(item.id)
     }
 
     return true
@@ -121,7 +121,7 @@ export default function Header() {
 
   useEffect(() => {
     const loadCartCount = async () => {
-      if (!user || user.user_metadata?.role !== 'lawyer') {
+      if (!user || (user.user_metadata?.role !== 'student')) {
         setCartCount(0)
         return
       }
@@ -187,7 +187,7 @@ export default function Header() {
 
 
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-4 items-center">
-          {user?.user_metadata?.role === 'lawyer' ? (
+          {(user?.user_metadata?.role === 'student') ? (
             <Button variant="ghost" size="icon" asChild className="relative" aria-label="Open orders">
               <TransitionLink href="/dashboard/orders" target="_blank" rel="noopener noreferrer">
                 <ShoppingCart className="h-5 w-5" />
@@ -281,7 +281,7 @@ export default function Header() {
 
                 <div className="py-6 space-y-4 flex flex-row items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {user?.user_metadata?.role === 'lawyer' ? (
+                    {(user?.user_metadata?.role === 'student') ? (
                       <Button variant="ghost" size="icon" asChild className="relative" aria-label="Open orders">
                         <TransitionLink href="/dashboard/orders" target="_blank" rel="noopener noreferrer">
                           <ShoppingCart className="h-5 w-5" />

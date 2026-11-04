@@ -125,7 +125,7 @@ const toFormState = (row: LiveClass): FormState => ({
 
 export default function AdminLiveClassesPage() {
   const router = useRouter()
-  const { user, supabase } = useSupabase()
+  const { user } = useSupabase()
   const { toast } = useToast()
 
   const [classes, setClasses] = useState<LiveClass[]>([])
@@ -142,19 +142,10 @@ export default function AdminLiveClassesPage() {
   const loadClasses = async () => {
     setLoading(true)
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      const accessToken = session?.access_token
-      if (!accessToken) {
-        throw new Error("Missing session token.")
-      }
-
+      
       const response = await fetch("/api/admin/live-classes", {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+                  },
         cache: "no-store",
       })
 
@@ -196,18 +187,10 @@ export default function AdminLiveClassesPage() {
 
       setEnrolmentsLoading(true)
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        const accessToken = session?.access_token
-        if (!accessToken) {
-          throw new Error("Missing session token.")
-        }
-
+        
         const response = await fetch(`/api/admin/live-classes/${enrollmentClassId}/registrations`, {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+                      },
           cache: "no-store",
         })
 
@@ -232,7 +215,7 @@ export default function AdminLiveClassesPage() {
     if (user !== undefined) {
       void loadEnrolments()
     }
-  }, [enrollmentClassId, supabase, toast, user])
+  }, [enrollmentClassId, toast, user])
 
   const openCreate = () => {
     setEditingId(null)
@@ -249,15 +232,7 @@ export default function AdminLiveClassesPage() {
   const saveClass = async () => {
     setSaving(true)
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      const accessToken = session?.access_token
-      if (!accessToken) {
-        throw new Error("Missing session token.")
-      }
-
+      
       const payload = {
         ...form,
         price: Number(form.price || 0),
@@ -270,8 +245,7 @@ export default function AdminLiveClassesPage() {
           method: editingId ? "PATCH" : "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+                      },
           body: JSON.stringify(payload),
         }
       )
@@ -301,18 +275,12 @@ export default function AdminLiveClassesPage() {
 
   const updateClass = async (id: string, patch: Partial<FormState>) => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const accessToken = session?.access_token
-      if (!accessToken) throw new Error("Missing session token.")
-
+      
       const response = await fetch(`/api/admin/live-classes/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+                  },
         body: JSON.stringify({
           ...patch,
           price: patch.price !== undefined ? Number(patch.price) : undefined,
@@ -336,17 +304,11 @@ export default function AdminLiveClassesPage() {
     if (!confirm("Delete this live class?")) return
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const accessToken = session?.access_token
-      if (!accessToken) throw new Error("Missing session token.")
-
+      
       const response = await fetch(`/api/admin/live-classes/${id}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+                  },
       })
 
       const payload = await response.json().catch(() => ({}))

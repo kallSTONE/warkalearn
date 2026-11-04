@@ -295,7 +295,7 @@ const en: Dictionary = {
   'enroll.action.processing': 'Processing...',
   'enroll.action.startCourse': 'Start Course',
   'enroll.action.enroll': 'Enroll',
-  'enroll.error.roleRequired': 'You must be a lawyer to enroll.',
+  'enroll.error.roleRequired': 'You must be a student to enroll.',
   'enroll.error.generic': 'Something went wrong. Please try again.',
   'enroll.status.success': 'Enrollment successful! Redirecting to your course...',
   'enroll.status.already': 'You are already enrolled.',

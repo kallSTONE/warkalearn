@@ -33,8 +33,7 @@ export default function AdminLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, supabase, signOut } = useSupabase()
-  const [loading, setLoading] = useState(true)
+  const { user, loading, signOut } = useSupabase()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const menuItems = [
@@ -50,7 +49,6 @@ export default function AdminLayout({
     { label: "Certifications", href: "/admin/certifications", icon: Award },
     { label: "Live Classes", href: "/admin/live-classes", icon: CalendarDays },
     { label: "Customization", href: "/admin/customization", icon: Palette },
-
   ]
 
   const isActiveRoute = (href: string) => {
@@ -73,18 +71,11 @@ export default function AdminLayout({
   // AUTH: HANDLE LOADING + REDIRECTS
   // -------------------------
   useEffect(() => {
-    // Supabase loads user asynchronously, so wait until it resolves.
-    if (user !== undefined) {
-      setLoading(false)
-    }
-  }, [user])
-
-  useEffect(() => {
     if (!loading) {
       if (!user) {
         router.replace("/login")
       } else if (user?.user_metadata?.role !== "admin") {
-        router.replace("/login")
+        router.replace("/dashboard")
       }
     }
   }, [loading, user, router])
@@ -113,11 +104,10 @@ export default function AdminLayout({
   // -------------------------
 
   if (user?.user_metadata?.role !== "admin")
-    return null;
+    return null
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
-
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-[280px] p-0">
           <div className="h-full flex flex-col bg-background">
@@ -245,7 +235,6 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <div className="flex min-h-screen flex-1 flex-col pt-0 lg:pl-6 transition-all duration-300">
-
         {/* Children content */}
         <main className="flex-1 bg-background p-4 md:p-6 lg:p-6">
           {children}

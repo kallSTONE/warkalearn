@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useRouteLoading } from "@/components/route-loading-provider"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -78,13 +77,13 @@ interface Review {
   comment: string
 }
 
-export default function EnrollClient({ slug }: { slug: string }) {
+export default function EnrollClient({ slug, initialCourse }: { slug: string; initialCourse?: any }) {
   const router = useRouter()
   const { startLoading } = useRouteLoading()
   const { user, loading: userLoading } = useSupabase()
-  const [course, setCourse] = useState<Course | null>(null)
+  const [course, setCourse] = useState<Course | null>(initialCourse ?? null)
   const [status, setStatus] = useState<"idle" | "checking" | "enrolled" | "already" | "error">("idle")
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialCourse)
 
   const dummyInstructors: Instructor[] = [
     { id: 1, name: "Alice Johnson", role: "Lead Instructor", avatar: "../../../../public/assets/images/instructors/avatar.jpg" },
@@ -156,57 +155,59 @@ export default function EnrollClient({ slug }: { slug: string }) {
       hydrateFromLocal()
     }
 
-    // Fetch from Supabase
+    // Fetch course from local API
     const fetchCourse = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("courses")
-        .select("*, lessons(*), course_media(*)")
-        .eq("slug", slug)
-        .single()
-
-
-      if (!error && data) {
-        const mapped = {
-          id: data.id,
-          title: data.title,
-          slug: data.slug,
-          description: data.description || "",
-          hero_image: data.hero_image || "/assets/images/default.jpg",
-          category: data.category ?? "",
-          level: data.level ?? "",
-          estimated_hours: data.estimated_hours || 0,
-          requirements: data.requirements || "Basic",
-          skills: data.skills || "",
-          students: data.students || 0,
-          rating: data.rating || 0,
-          is_paid: Boolean(data.is_paid),
-          price: data.price ?? null,
-          lessons: (data.lessons || []).map((lesson: any) => ({
-            id: lesson.id,
-            title: lesson.title,
-            description: lesson.description,
-            estimated_time: lesson.estimated_time,
-            topics: lesson.topics,
-            step_order: lesson.step_order,
-          })),
-          media: data.course_media || [],
-        }
-        setCourse(mapped)
-
-        try {
-          const cached = localStorage.getItem(cacheKey)
-          const cachedCourses = cached ? JSON.parse(cached) : []
-          const next = Array.isArray(cachedCourses)
-            ? cachedCourses.filter((c: any) => c.slug !== slug)
-            : []
-          next.push(mapped)
-          localStorage.setItem(cacheKey, JSON.stringify(next))
-        } catch {
-          localStorage.removeItem(cacheKey)
-        }
+      if (!initialCourse) {
+        setLoading(true)
       }
-      setLoading(false)
+      try {
+        const res = await fetch(`/api/courses/${slug}`, { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          const mapped: Course = {
+            id: data.id,
+            title: data.title,
+            slug: data.slug,
+            description: data.description || "",
+            hero_image: data.hero_image || data.heroImage || "/assets/images/default.jpg",
+            category: data.category ?? "",
+            level: data.level ?? "",
+            estimated_hours: data.estimated_hours || data.estimatedHours || 0,
+            requirements: data.requirements || "Basic",
+            skills: data.skills || "",
+            students: data.students || 0,
+            rating: data.rating || 0,
+            is_paid: Boolean(data.is_paid ?? data.isPaid),
+            price: data.price ?? null,
+            lessons: (data.lessons || []).map((lesson: any) => ({
+              id: lesson.id,
+              title: lesson.title,
+              description: lesson.description,
+              estimated_time: lesson.estimated_time ?? lesson.estimatedTime,
+              topics: lesson.topics || [],
+              step_order: lesson.step_order ?? lesson.stepOrder,
+            })),
+            media: data.course_media || data.media || [],
+          }
+          setCourse(mapped)
+
+          try {
+            const cached = localStorage.getItem(cacheKey)
+            const cachedCourses = cached ? JSON.parse(cached) : []
+            const next = Array.isArray(cachedCourses)
+              ? cachedCourses.filter((c: any) => c.slug !== slug)
+              : []
+            next.push(mapped)
+            localStorage.setItem(cacheKey, JSON.stringify(next))
+          } catch {
+            localStorage.removeItem(cacheKey)
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching course:', err)
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchCourse()
@@ -216,15 +217,15 @@ export default function EnrollClient({ slug }: { slug: string }) {
   useEffect(() => {
     const checkEnrollment = async () => {
       if (!user || !course) return
-      const { data, error } = await supabase
-        .from("course_enrollments")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("course_id", course.id)
-        .maybeSingle()
-      if (!error) {
-        setIsEnrolled(Boolean(data))
-        if (data) setStatus("already")
+      try {
+        const res = await fetch(`/api/enroll?courseId=${course.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setIsEnrolled(Boolean(data.isEnrolled))
+          if (data.isEnrolled) setStatus("already")
+        }
+      } catch (err) {
+        console.error("Failed to check enrollment:", err)
       }
     }
     checkEnrollment()
@@ -243,46 +244,26 @@ export default function EnrollClient({ slug }: { slug: string }) {
     setStatus("checking")
 
     try {
-      // 1️⃣ Check if already enrolled
-      const { data: existingEnrollment, error: existingError } = await supabase
-        .from("course_enrollments")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("course_id", course.id)
-        .maybeSingle()
+      const res = await fetch("/api/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: course.id,
+          amountPaid: Number(amountPaid ?? 0),
+        }),
+      })
 
-      if (existingError) throw existingError
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || "Enrollment failed")
+      }
 
-      if (existingEnrollment) {
+      if (data.status === "already") {
         setStatus("already")
+        setIsEnrolled(true)
         return
       }
 
-      // 2️⃣ Create new enrollment
-      const { data: enrollment, error: enrollError } = await supabase
-        .from("course_enrollments")
-        .insert({
-          user_id: user.id,
-          course_id: course.id,
-          amount_paid: Number(amountPaid ?? 0),
-        })
-        .select("id")
-        .single()
-
-      if (enrollError) throw enrollError
-
-      // 3️⃣ Initialize progress
-      const { error: progressError } = await supabase
-        .from("course_progress")
-        .insert({
-          enrollment_id: enrollment.id,
-          progress_percentage: 0,
-          completed: false,
-        })
-
-      if (progressError) throw progressError
-
-      // 4️⃣ Success — show status and redirect
       setStatus("enrolled")
       setIsEnrolled(true)
 
@@ -312,22 +293,18 @@ export default function EnrollClient({ slug }: { slug: string }) {
 
     setStatus("checking")
 
-    const { data: existing, error } = await supabase
-      .from("course_enrollments")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("course_id", course.id)
-      .maybeSingle()
-
-    if (error) {
+    try {
+      const res = await fetch(`/api/enroll?courseId=${course.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.isEnrolled) {
+          setStatus("already")
+          setIsEnrolled(true)
+          return
+        }
+      }
+    } catch (error) {
       console.error(error)
-      setStatus("error")
-      return
-    }
-
-    if (existing) {
-      setStatus("already")
-      return
     }
 
     setStatus("idle")
@@ -589,13 +566,13 @@ export default function EnrollClient({ slug }: { slug: string }) {
                 {t('enroll.action.continueCourse', 'Continue to Course')}
               </Button>
             ) : (
-              (!user || user?.user_metadata?.role === 'lawyer') && (
+              (!user || user?.user_metadata?.role === 'student') && (
                 <Button
                   onClick={handleEnrollClick}
                   className="w-full text-lg font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.4)]"
                   disabled={status === "checking"}
                 >
-                  {status === "checking" && user?.user_metadata?.role == 'lawyer' ? (
+                  {status === "checking" && (user?.user_metadata?.role === 'student') ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" /> {t('enroll.action.processing', 'Processing...')}
                     </span>
@@ -606,8 +583,8 @@ export default function EnrollClient({ slug }: { slug: string }) {
               )
             )}
 
-            {user && user?.user_metadata?.role !== 'lawyer' && !isEnrolled && (
-              <p className="text-center text-sm text-red-500">{t('enroll.error.roleRequired', 'You must be a lawyer to enroll.')}</p>
+            {user && user?.user_metadata?.role !== 'student' && !isEnrolled && (
+              <p className="text-center text-sm text-red-500">{t('enroll.error.roleRequired', 'You must be a student to enroll.')}</p>
             )}
 
             {!isEnrolled && status === "enrolled" && (

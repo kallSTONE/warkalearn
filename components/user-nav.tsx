@@ -30,7 +30,7 @@ export function UserNav() {
       ? "/admin/dashboard"
       : user?.user_metadata?.role === "reviewer"
         ? "/reviewer"
-        : "/dashboard"; // lawyer + fallback
+        : "/dashboard"; // student + fallback
       
   return (
     <DropdownMenu>

@@ -5,19 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
 import ProductForm, { ProductFormValue } from '@/components/admin/shop/product-form'
 
 async function getAuthHeaders(contentType = false) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  const accessToken = session?.access_token
-  if (!accessToken) throw new Error('Missing session token.')
-
   return {
-    Authorization: `Bearer ${accessToken}`,
     ...(contentType ? { 'Content-Type': 'application/json' } : {}),
   }
 }

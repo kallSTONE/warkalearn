@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Award, Plus, Save, Trash2 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -81,35 +80,32 @@ export default function AdminCertificationsPage() {
   useEffect(() => {
     const loadCourses = async () => {
       setLoading(true)
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, title, slug, lessons(id, title, step_order)")
-        .order("title", { ascending: true })
-
-      if (error) {
-        toast({ title: "Failed to load courses", description: error.message, variant: "destructive" })
+      try {
+        const res = await fetch('/api/admin/courses')
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data?.error || 'Failed to load courses')
+        }
+        const normalized: Course[] = (data || []).map((course: any) => ({
+          id: String(course.id),
+          title: course.title,
+          slug: course.slug,
+          lessons: (course.lessons || [])
+            .slice()
+            .sort((a: any, b: any) => a.step_order - b.step_order)
+            .map((lesson: any) => ({
+              id: String(lesson.id),
+              title: lesson.title,
+              step_order: lesson.step_order,
+            })),
+        }))
+        setCourses(normalized)
+      } catch (error: any) {
+        toast({ title: 'Failed to load courses', description: error.message, variant: 'destructive' })
+      } finally {
         setLoading(false)
-        return
       }
-
-      const normalized: Course[] = (data || []).map((course: any) => ({
-        id: String(course.id),
-        title: course.title,
-        slug: course.slug,
-        lessons: (course.lessons || [])
-          .slice()
-          .sort((a: any, b: any) => a.step_order - b.step_order)
-          .map((lesson: any) => ({
-            id: String(lesson.id),
-            title: lesson.title,
-            step_order: lesson.step_order,
-          })),
-      }))
-
-      setCourses(normalized)
-      setLoading(false)
     }
-
     loadCourses()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -128,55 +124,33 @@ export default function AdminCertificationsPage() {
       }
 
       setLoading(true)
+      try {
+        const res = await fetch(`/api/admin/certifications?courseId=${selectedCourseId}`)
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data?.error || 'Failed to load certification settings')
+        }
 
-      const [{ data: settingsData, error: settingsError }, { data: questionsData, error: questionsError }] =
-        await Promise.all([
-          supabase
-            .from("certification_settings")
-            .select("enabled, passing_score, time_per_question_minutes, retry_cooldown_hours, question_limit, verification_base_url, certificate_title, issuer_name, logo_path, template_variant")
-            .eq("course_id", Number(selectedCourseId))
-            .maybeSingle(),
-          supabase
-            .from("certification_questions")
-            .select("id, question, options, correct_option, explanation, sort_order, active")
-            .eq("course_id", Number(selectedCourseId))
-            .order("sort_order", { ascending: true }),
-        ])
+        const s = data.settings || DEFAULT_CERTIFICATION_SETTINGS
+        setSettings({
+          enabled: Boolean(s.enabled),
+          passingScore: String(s.passing_score ?? 70),
+          timePerQuestion: String(s.time_per_question_minutes ?? 2),
+          cooldownHours: String(s.retry_cooldown_hours ?? 48),
+          questionLimit: s.question_limit ? String(s.question_limit) : '',
+          verificationBaseUrl: s.verification_base_url || DEFAULT_CERTIFICATION_SETTINGS.verification_base_url,
+          certificateTitle: s.certificate_title || DEFAULT_CERTIFICATION_SETTINGS.certificate_title,
+          issuerName: s.issuer_name || DEFAULT_CERTIFICATION_SETTINGS.issuer_name,
+          logoPath: s.logo_path || DEFAULT_CERTIFICATION_SETTINGS.logo_path,
+          templateVariant: s.template_variant || DEFAULT_CERTIFICATION_SETTINGS.template_variant,
+        })
 
-      if (settingsError) {
-        toast({ title: "Failed to load certification settings", description: settingsError.message, variant: "destructive" })
+        setQuestions(Array.isArray(data.questions) ? data.questions : [])
+      } catch (err: any) {
+        toast({ title: 'Failed to load certification', description: err.message, variant: 'destructive' })
+      } finally {
+        setLoading(false)
       }
-
-      if (questionsError) {
-        toast({ title: "Failed to load certification questions", description: questionsError.message, variant: "destructive" })
-      }
-
-      setSettings({
-        enabled: settingsData?.enabled ?? false,
-        passingScore: String(settingsData?.passing_score ?? DEFAULT_CERTIFICATION_SETTINGS.passing_score),
-        timePerQuestion: String(settingsData?.time_per_question_minutes ?? DEFAULT_CERTIFICATION_SETTINGS.time_per_question_minutes),
-        cooldownHours: String(settingsData?.retry_cooldown_hours ?? DEFAULT_CERTIFICATION_SETTINGS.retry_cooldown_hours),
-        questionLimit: settingsData?.question_limit ? String(settingsData.question_limit) : "",
-        verificationBaseUrl: settingsData?.verification_base_url ?? DEFAULT_CERTIFICATION_SETTINGS.verification_base_url,
-        certificateTitle: settingsData?.certificate_title ?? DEFAULT_CERTIFICATION_SETTINGS.certificate_title,
-        issuerName: settingsData?.issuer_name ?? DEFAULT_CERTIFICATION_SETTINGS.issuer_name,
-        logoPath: settingsData?.logo_path ?? DEFAULT_CERTIFICATION_SETTINGS.logo_path,
-        templateVariant: settingsData?.template_variant ?? DEFAULT_CERTIFICATION_SETTINGS.template_variant,
-      })
-
-      setQuestions(
-        (questionsData || []).map((question: any, index: number) => ({
-          id: String(question.id),
-          question: question.question ?? "",
-          options: Array.isArray(question.options) ? question.options : [],
-          correct_option: question.correct_option ?? 0,
-          explanation: question.explanation ?? "",
-          sort_order: question.sort_order ?? index + 1,
-          active: question.active ?? true,
-        }))
-      )
-
-      setLoading(false)
     }
 
     void loadCertification()
@@ -266,47 +240,37 @@ export default function AdminCertificationsPage() {
 
     setSaving(true)
     try {
-      const settingsPayload = {
-        course_id: Number(selectedCourseId),
-        enabled: settings.enabled,
-        passing_score: Number(settings.passingScore) || DEFAULT_CERTIFICATION_SETTINGS.passing_score,
-        time_per_question_minutes: Number(settings.timePerQuestion) || DEFAULT_CERTIFICATION_SETTINGS.time_per_question_minutes,
-        retry_cooldown_hours: Number(settings.cooldownHours) || DEFAULT_CERTIFICATION_SETTINGS.retry_cooldown_hours,
-        question_limit: settings.questionLimit ? Number(settings.questionLimit) : null,
-        verification_base_url: settings.verificationBaseUrl.trim() || DEFAULT_CERTIFICATION_SETTINGS.verification_base_url,
-        certificate_title: settings.certificateTitle.trim() || DEFAULT_CERTIFICATION_SETTINGS.certificate_title,
-        issuer_name: settings.issuerName.trim() || DEFAULT_CERTIFICATION_SETTINGS.issuer_name,
-        logo_path: settings.logoPath.trim() || DEFAULT_CERTIFICATION_SETTINGS.logo_path,
-        template_variant: settings.templateVariant.trim() || DEFAULT_CERTIFICATION_SETTINGS.template_variant,
-      }
+      const res = await fetch('/api/admin/certifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: Number(selectedCourseId),
+          settings: {
+            enabled: settings.enabled,
+            passing_score: Number(settings.passingScore) || DEFAULT_CERTIFICATION_SETTINGS.passing_score,
+            time_per_question_minutes: Number(settings.timePerQuestion) || DEFAULT_CERTIFICATION_SETTINGS.time_per_question_minutes,
+            retry_cooldown_hours: Number(settings.cooldownHours) || DEFAULT_CERTIFICATION_SETTINGS.retry_cooldown_hours,
+            question_limit: settings.questionLimit ? Number(settings.questionLimit) : null,
+            verification_base_url: settings.verificationBaseUrl.trim() || DEFAULT_CERTIFICATION_SETTINGS.verification_base_url,
+            certificate_title: settings.certificateTitle.trim() || DEFAULT_CERTIFICATION_SETTINGS.certificate_title,
+            issuer_name: settings.issuerName.trim() || DEFAULT_CERTIFICATION_SETTINGS.issuer_name,
+            logo_path: settings.logoPath.trim() || DEFAULT_CERTIFICATION_SETTINGS.logo_path,
+            template_variant: settings.templateVariant.trim() || DEFAULT_CERTIFICATION_SETTINGS.template_variant,
+          },
+          questions: questions.map((question, index) => ({
+            question: question.question.trim(),
+            options: question.options,
+            correct_option: question.correct_option,
+            explanation: question.explanation?.trim() || null,
+            sort_order: question.sort_order ?? index + 1,
+            active: question.active !== false,
+          })),
+        }),
+      })
 
-      const { error: upsertError } = await supabase
-        .from("certification_settings")
-        .upsert(settingsPayload, { onConflict: "course_id" })
-
-      if (upsertError) throw upsertError
-
-      const { error: deleteError } = await supabase
-        .from("certification_questions")
-        .delete()
-        .eq("course_id", Number(selectedCourseId))
-
-      if (deleteError) throw deleteError
-
-      if (questions.length > 0) {
-        const questionPayload = questions.map((question, index) => ({
-          course_id: Number(selectedCourseId),
-          question: question.question.trim(),
-          options: question.options,
-          correct_option: question.correct_option,
-          explanation: question.explanation.trim() || null,
-          sort_order: question.sort_order ?? index + 1,
-          active: question.active,
-        }))
-
-        const { error: insertError } = await supabase.from("certification_questions")
-          .insert(questionPayload)
-        if (insertError) throw insertError
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to save certification')
       }
 
       toast({ title: "Certification saved", description: "The course certification settings are now live." })

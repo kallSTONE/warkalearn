@@ -1,32 +1,38 @@
-import { unstable_noStore as noStore } from "next/cache"
-
-import { supabase } from "@/lib/supabase"
+import { db } from "@/db"
+import { siteSettings } from "@/db/schema"
+import { eq } from "drizzle-orm"
 
 export type SiteSettings = {
-    id: number
-    hero_title: string | null
-    hero_subtitle: string | null
-    hero_cta_text: string | null
-    hero_cta_link: string | null
-    hero_video_id: string | null
-    default_theme: string | null
+  id: number
+  hero_title: string | null
+  hero_subtitle: string | null
+  hero_cta_text: string | null
+  hero_cta_link: string | null
+  hero_video_id: string | null
+  default_theme: string | null
 }
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
-    noStore()
+  try {
+    const [row] = await db
+      .select()
+      .from(siteSettings)
+      .where(eq(siteSettings.id, 1))
+      .limit(1)
 
-    const { data, error } = await supabase
-        .from("site_settings")
-        .select(
-            "id, hero_title, hero_subtitle, hero_cta_text, hero_cta_link, hero_video_id, default_theme"
-        )
-        .eq("id", 1)
-        .maybeSingle()
+    if (!row) return null
 
-    if (error) {
-        console.error("Failed to load site settings:", error)
-        return null
+    return {
+      id: row.id,
+      hero_title: row.heroTitle,
+      hero_subtitle: row.heroSubtitle,
+      hero_cta_text: row.heroCtaText,
+      hero_cta_link: row.heroCtaLink,
+      hero_video_id: row.heroVideoId,
+      default_theme: row.defaultTheme,
     }
-
-    return data ?? null
+  } catch (error) {
+    console.error("Failed to load site settings:", error)
+    return null
+  }
 }

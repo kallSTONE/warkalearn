@@ -1,86 +1,65 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import { liveClasses, liveClassRegistrations, profiles } from '@/db/schema'
 import { requireAdminRequest } from '@/lib/server/api-auth'
+import { desc, eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
-
-type LiveClassRegistrationRow = {
-  id: string
-  live_class_id: string
-  user_id: string
-  amount_paid: number
-  payment_status: string
-  payment_method: string
-  payment_reference: string | null
-  registration_status: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-  live_classes: {
-    id: string
-    title: string
-    slug: string
-    start_at: string
-    meeting_platform: string
-    meeting_url: string | null
-    currency: string
-  } | null
-  profiles: {
-    id: string
-    full_name: string | null
-    role: string | null
-  } | null
-}
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const authResult = await requireAdminRequest(request)
   if (!authResult.ok) return authResult.response
 
   try {
-    const admin = getSupabaseAdminClient()
-    const { data, error } = await admin
-      .from('live_class_registrations')
-      .select(`
-        id,
-        live_class_id,
-        user_id,
-        amount_paid,
-        payment_status,
-        payment_method,
-        payment_reference,
-        registration_status,
-        notes,
-        created_at,
-        updated_at,
-        live_classes (
-          id,
-          title,
-          slug,
-          start_at,
-          meeting_platform,
-          meeting_url,
-          currency
-        ),
-        profiles (
-          id,
-          full_name,
-          role
-        )
-      `)
-      .eq('live_class_id', params.id)
-      .order('created_at', { ascending: false })
-      .returns<LiveClassRegistrationRow[]>()
+    const rows = await db
+      .select({
+        registration: liveClassRegistrations,
+        liveClass: liveClasses,
+        profile: profiles,
+      })
+      .from(liveClassRegistrations)
+      .leftJoin(liveClasses, eq(liveClassRegistrations.liveClassId, liveClasses.id))
+      .leftJoin(profiles, eq(liveClassRegistrations.userId, profiles.id))
+      .where(eq(liveClassRegistrations.liveClassId, params.id))
+      .orderBy(desc(liveClassRegistrations.createdAt))
 
-    if (error) {
-      console.error('Admin live class registrations query error:', error)
-      return NextResponse.json({ error: 'Unable to load live class enrolments.' }, { status: 500 })
-    }
+    const data = rows.map(({ registration, liveClass, profile }) => ({
+      id: registration.id,
+      live_class_id: registration.liveClassId,
+      user_id: registration.userId,
+      amount_paid: Number(registration.amountPaid ?? 0),
+      payment_status: registration.paymentStatus,
+      payment_method: registration.paymentMethod,
+      payment_reference: registration.paymentReference,
+      registration_status: registration.registrationStatus,
+      notes: registration.notes,
+      created_at: registration.createdAt?.toISOString(),
+      updated_at: registration.updatedAt?.toISOString(),
+      live_classes: liveClass
+        ? {
+            id: liveClass.id,
+            title: liveClass.title,
+            slug: liveClass.slug,
+            start_at: liveClass.startAt?.toISOString(),
+            meeting_platform: liveClass.meetingPlatform,
+            meeting_url: liveClass.meetingUrl,
+            currency: liveClass.currency,
+          }
+        : null,
+      profiles: profile
+        ? {
+            id: profile.id,
+            full_name: profile.fullName,
+            role: profile.role,
+          }
+        : null,
+    }))
 
-    return NextResponse.json({ data: data ?? [] }, { status: 200 })
+    return NextResponse.json({ data }, { status: 200 })
   } catch (error: any) {
     console.error('Admin live class registrations GET error:', error)
-    return NextResponse.json({ error: error?.message ?? 'Unable to load live class enrolments.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message ?? 'Unable to load registrations.' }, { status: 500 })
   }
 }

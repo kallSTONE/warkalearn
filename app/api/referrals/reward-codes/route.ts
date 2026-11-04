@@ -1,55 +1,58 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/server/supabase-admin'
+import { db } from '@/db'
+import { referralRewardCodes } from '@/db/schema'
 import { authenticateRequest } from '@/lib/server/api-auth'
+import { eq, and, desc, gt, isNull, or } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
-type RewardCodeRow = {
-  id: string
-  code: string
-  status: string
-  created_at: string
-  expires_at: string | null
-  request_id: string
-}
-
 export async function GET(request: Request) {
   const authResult = await authenticateRequest(request)
-
-  if (!authResult.ok) {
-    return authResult.response
-  }
+  if (!authResult.ok) return authResult.response
 
   try {
-    const admin = getSupabaseAdminClient()
     const userId = authResult.context.userId
+    const now = new Date()
 
-    const { data: activeCodes, error } = await admin
-      .from('referral_reward_codes')
-      .select('id, code, status, created_at, expires_at, request_id')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .returns<RewardCodeRow[]>()
+    const activeCodes = await db
+      .select({
+        id: referralRewardCodes.id,
+        code: referralRewardCodes.code,
+        status: referralRewardCodes.status,
+        created_at: referralRewardCodes.createdAt,
+        expires_at: referralRewardCodes.expiresAt,
+        request_id: referralRewardCodes.requestId,
+      })
+      .from(referralRewardCodes)
+      .where(
+        and(
+          eq(referralRewardCodes.userId, userId),
+          eq(referralRewardCodes.status, 'active'),
+          or(
+            isNull(referralRewardCodes.expiresAt),
+            gt(referralRewardCodes.expiresAt, now)
+          )
+        )
+      )
+      .orderBy(desc(referralRewardCodes.createdAt))
 
-    if (error) {
-      console.error('Referral reward codes fetch error:', error)
-      return NextResponse.json({ error: 'Unable to load reward codes.' }, { status: 500 })
-    }
-
-    const nowIso = new Date().toISOString()
-    const usableCodes = (activeCodes ?? []).filter(
-      (code) => !code.expires_at || code.expires_at > nowIso
+    return NextResponse.json(
+      {
+        codes: activeCodes.map((code) => ({
+          id: code.id,
+          code: code.code,
+          status: code.status,
+          created_at: code.created_at?.toISOString(),
+          expires_at: code.expires_at?.toISOString() ?? null,
+          request_id: code.request_id,
+        })),
+      },
+      { status: 200 }
     )
-
-    return NextResponse.json({ codes: usableCodes }, { status: 200 })
   } catch (error: any) {
     console.error('Referral reward codes GET error:', error)
-    return NextResponse.json(
-      { error: error?.message ?? 'Unable to load reward codes.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error?.message ?? 'Unable to load reward codes.' }, { status: 500 })
   }
 }
