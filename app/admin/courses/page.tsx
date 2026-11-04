@@ -256,7 +256,7 @@ export default function CoursesPage() {
             : reason === 'name-mismatch'
               ? 'Course name does not match exactly.'
               : reason === 'not-found'
-                ? 'Course not found.'
+                ? 'Course matching your search has not been found. Change your search work or create new course'
                 : payload?.error || 'Failed to delete course. Please try again later. '
         toast({ title: 'Delete blocked', description: message })
         setSubmittingDelete(false)
