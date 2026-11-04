@@ -665,7 +665,7 @@ export default function CoursesPage() {
               onClick={confirmDelete}
               disabled={submittingDelete || !enteredCourseName || !adminPassword}
             >
-              {submittingDelete ? 'Deleting…' : 'Confirm delete'}
+              {submittingDelete ? 'Deleting…' : 'Delete Permanently.'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
