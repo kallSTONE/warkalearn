@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
-import { supabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 
 type Lesson = { id: number; title: string; description?: string | null; estimated_time?: number | null; topics?: any }
@@ -31,40 +30,22 @@ export default function CourseDetailPage() {
         if (!id) return
         const load = async () => {
             setLoading(true)
-            const { data: courseData, error: courseErr } = await supabase
-                .from('courses')
-                .select('*')
-                .eq('id', id)
-                .single()
-
-            if (courseErr) {
+            try {
+                const res = await fetch(`/api/admin/courses/${id}`, { cache: 'no-store' })
+                const data = await res.json()
+                if (!res.ok) {
+                    toast({ title: 'Error', description: data?.error || 'Failed to load course' })
+                    setLoading(false)
+                    return
+                }
+                setCourse(data.course)
+                setLessons(data.lessons || [])
+                setReviewNotes(data.reviewNotes || [])
+            } catch (err: any) {
+                toast({ title: 'Error', description: err.message })
+            } finally {
                 setLoading(false)
-                toast({ title: 'Error', description: courseErr.message })
-                return
             }
-
-            const { data: lessonsData, error: lessonsErr } = await supabase
-                .from('lessons')
-                .select('*')
-                .eq('course_id', id)
-                .order('step_order', { ascending: true })
-
-            // Load reviewer notes for this course (visible to admin)
-            const { data: notesData } = await supabase
-                .from('course_review_notes')
-                .select('id, content, status, reviewer_id, created_at, addressed')
-                .eq('course_id', id)
-                .order('created_at', { ascending: false })
-
-            setLoading(false)
-            if (lessonsErr) {
-                toast({ title: 'Error', description: lessonsErr.message })
-                return
-            }
-
-            setCourse(courseData)
-            setLessons(lessonsData || [])
-            setReviewNotes(notesData || [])
         }
 
         load()
@@ -150,14 +131,19 @@ export default function CourseDetailPage() {
                                                                     className="h-8 px-3"
                                                                     onClick={async () => {
                                                                         const next = !isAddressed
-                                                                        const { error } = await supabase
-                                                                            .from('course_review_notes')
-                                                                            .update({ addressed: next, status: next ? 'resolved' : 'open' })
-                                                                            .eq('id', n.id)
-                                                                        if (error) {
-                                                                            toast({ title: 'Update failed', description: error.message })
-                                                                        } else {
-                                                                            setReviewNotes((prev) => prev.map((x) => x.id === n.id ? { ...x, addressed: next, status: next ? 'resolved' : x.status } : x))
+                                                                        try {
+                                                                            const res = await fetch(`/api/admin/courses/${id}`, {
+                                                                                method: 'PATCH',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({ noteId: n.id, addressed: next }),
+                                                                            })
+                                                                            if (!res.ok) {
+                                                                                toast({ title: 'Update failed', description: 'Failed to update note' })
+                                                                            } else {
+                                                                                setReviewNotes((prev) => prev.map((x) => x.id === n.id ? { ...x, addressed: next, status: next ? 'resolved' : 'open' } : x))
+                                                                            }
+                                                                        } catch (e: any) {
+                                                                            toast({ title: 'Update failed', description: e.message })
                                                                         }
                                                                     }}
                                                                 >

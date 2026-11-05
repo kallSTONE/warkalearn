@@ -15,7 +15,6 @@ import {
     SelectItem,
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
-import { supabase } from '@/lib/supabase'
 import { Checkbox } from "@/components/ui/checkbox"
 
 type TopicItem = {
@@ -156,13 +155,10 @@ export default function NewCoursePage() {
 
             // Prefer server draft if available
             if (user && hasServerDraft) {
-                const { data, error } = await supabase
-                    .from('course_drafts')
-                    .select('data')
-                    .eq('user_id', user.id)
-                    .single()
-                if (!error && data?.data) {
-                    applyData(data.data)
+                const res = await fetch('/api/admin/courses/drafts?mine=true')
+                const json = await res.json()
+                if (json?.data) {
+                    applyData(json.data)
                     return
                 }
             }
@@ -231,12 +227,13 @@ export default function NewCoursePage() {
                 setHasServerDraft(false)
                 return
             }
-            const { data, error } = await supabase
-                .from('course_drafts')
-                .select('id')
-                .eq('user_id', user.id)
-                .maybeSingle()
-            setHasServerDraft(Boolean(data) && !error)
+            try {
+                const res = await fetch('/api/admin/courses/drafts?mine=true')
+                const json = await res.json()
+                setHasServerDraft(Boolean(json?.data))
+            } catch {
+                setHasServerDraft(false)
+            }
         }
         checkServer()
     }, [user, userLoading])
@@ -248,14 +245,12 @@ export default function NewCoursePage() {
         if (!hasContent(payload)) return
         const t = setTimeout(async () => {
             try {
-                const { error } = await supabase
-                    .from('course_drafts')
-                    .upsert({
-                        user_id: user.id,
-                        data: payload,
-                        updated_at: new Date().toISOString(),
-                    }, { onConflict: 'user_id' })
-                if (!error) setHasServerDraft(true)
+                const res = await fetch('/api/admin/courses/drafts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: payload }),
+                })
+                if (res.ok) setHasServerDraft(true)
             } catch {
                 // ignore
             }
@@ -567,10 +562,7 @@ export default function NewCoursePage() {
                     setHasLocalDraft(false)
                 }
                 if (user) {
-                    await supabase
-                        .from('course_drafts')
-                        .delete()
-                        .eq('user_id', user.id)
+                    await fetch('/api/admin/courses/drafts', { method: 'DELETE' })
                     setHasServerDraft(false)
                 }
             } catch {
@@ -608,10 +600,7 @@ export default function NewCoursePage() {
                                     onClick={async () => {
                                         try {
                                             if (user) {
-                                                await supabase
-                                                    .from('course_drafts')
-                                                    .delete()
-                                                    .eq('user_id', user.id)
+                                                await fetch('/api/admin/courses/drafts', { method: 'DELETE' })
                                                 setHasServerDraft(false)
                                                 toast({ title: 'Draft cleared' })
                                             }

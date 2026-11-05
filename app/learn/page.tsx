@@ -2,7 +2,6 @@
 
 import TransitionLink from '@/components/transition-link'
 import { useEffect, useState, useMemo } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -90,21 +89,21 @@ export default function CoursesPage() {
 
     const fetchCourses = async () => {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('published', true)
-        .eq('status', 'published')
-        .order('id', { ascending: true })
-
-      if (!error && data) {
-        const mapped = data
-          .filter((c) => c.published !== false && c.status !== 'draft')
-          .map(mapCourse)
-        setCourses(mapped)
-        localStorage.setItem('courses', JSON.stringify(mapped))
+      try {
+        const res = await fetch('/api/courses')
+        const json = await res.json()
+        if (json?.data && Array.isArray(json.data)) {
+          const mapped = json.data
+            .filter((c: any) => c.published !== false && c.status !== 'draft')
+            .map(mapCourse)
+          setCourses(mapped)
+          localStorage.setItem('courses', JSON.stringify(mapped))
+        }
+      } catch (err) {
+        console.error('Failed to load courses:', err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     fetchCourses()

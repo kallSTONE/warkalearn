@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/db'
+import { db, ensureSchemaSynced } from '@/db'
 import { courseEnrollments, courseProgress, courses } from '@/db/schema'
 import { and, eq, sql } from 'drizzle-orm'
 import { authenticateRequest } from '@/lib/server/api-auth'
@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
     try {
+        await ensureSchemaSynced()
         const authResult = await authenticateRequest(request)
         if (!authResult.ok) {
             return authResult.response
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
+        await ensureSchemaSynced()
         const authResult = await authenticateRequest(request)
         if (!authResult.ok) {
             return authResult.response
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
                 .values({
                     userId,
                     courseId: targetCourseId!,
+                    amountPaid: amountPaid ? String(amountPaid) : '0',
                 })
                 .returning({ id: courseEnrollments.id })
 
@@ -143,4 +146,3 @@ export async function POST(request: Request) {
         )
     }
 }
-

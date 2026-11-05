@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { attachCreatorToCourse } from '@/lib/courseCreators'
 import CourseSection from './courseSection'
 import type { Creator } from '@/data/creators'
@@ -45,7 +44,11 @@ export default function CourseCarousel() {
 
     const cached = localStorage.getItem('home_courses')
     if (cached) {
-      setCourses(JSON.parse(cached))
+      try {
+        setCourses(JSON.parse(cached))
+      } catch {
+        localStorage.removeItem('home_courses')
+      }
     } else {
       const fallback = (staticCourses as any[])
         .filter((c) => c.published !== false && c.status !== 'draft')
@@ -54,17 +57,17 @@ export default function CourseCarousel() {
     }
 
     const fetchCourses = async () => {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*, course_media(*)')
-        .eq('published', true)
-        .order('id', { ascending: true })
-
-      if (error || !data) return
-
-      const mapped = data.map(mapCourse)
-      setCourses(mapped)
-      localStorage.setItem('home_courses', JSON.stringify(mapped))
+      try {
+        const res = await fetch('/api/courses')
+        const json = await res.json()
+        if (json?.data && Array.isArray(json.data)) {
+          const mapped = json.data.map(mapCourse)
+          setCourses(mapped)
+          localStorage.setItem('home_courses', JSON.stringify(mapped))
+        }
+      } catch (err) {
+        console.error('Failed to load home courses:', err)
+      }
     }
 
     fetchCourses()

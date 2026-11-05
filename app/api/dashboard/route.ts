@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/db'
+import { db, ensureSchemaSynced } from '@/db'
 import {
     courseEnrollments,
     courseProgress,
@@ -20,6 +20,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
     try {
+        await ensureSchemaSynced()
         const authResult = await authenticateRequest(request)
         if (!authResult.ok) {
             return authResult.response
@@ -58,176 +59,157 @@ export async function GET(request: Request) {
                     courseId: true,
                     title: true,
                     stepOrder: true,
+                    estimatedTime: true,
                 },
             })
             : []
 
-        const allCompletions = await db.query.lessonQuizCompletions.findMany({
-            where: eq(lessonQuizCompletions.userId, userId),
-            columns: {
-                lessonId: true,
-            },
+        const allCompletions = courseIds.length > 0
+            ? await db.query.lessonQuizCompletions.findMany({
+                where: and(
+                    eq(lessonQuizCompletions.userId, userId),
+                    inArray(
+                        lessonQuizCompletions.lessonId,
+                        allCourseLessons.map((l) => l.id)
+                    )
+                ),
+                columns: { lessonId: true },
+            })
+            : []
+
+        const completedLessonIds = new Set(allCompletions.map((c) => c.lessonId))
+
+        // Group lessons by course
+        const lessonsByCourse = new Map<number, typeof allCourseLessons>()
+        allCourseLessons.forEach((l) => {
+            const list = lessonsByCourse.get(l.courseId) ?? []
+            list.push(l)
+            lessonsByCourse.set(l.courseId, list)
         })
 
-        const completedLessonSet = new Set(allCompletions.map((c) => c.lessonId))
+        // 4. Format enrolled courses
+        const enrolledCourses = enrollments.map((enrollment) => {
+            const course = enrollment.course
+            const progress = progressMap.get(enrollment.id)
+            const courseLessons = lessonsByCourse.get(enrollment.courseId) ?? []
 
-        // Group lessons by courseId
-        const courseLessonsMap = new Map<number, typeof allCourseLessons>()
-        for (const l of allCourseLessons) {
-            const list = courseLessonsMap.get(l.courseId) || []
-            list.push(l)
-            courseLessonsMap.set(l.courseId, list)
-        }
+            const totalLessons = courseLessons.length
+            const completedLessons = courseLessons.filter((l) => completedLessonIds.has(l.id)).length
+            const progressPct = totalLessons > 0
+                ? Math.round((completedLessons / totalLessons) * 100)
+                : Number(progress?.progressPercentage || 0)
 
-        // Format enrolled courses
-        const formattedCourses = enrollments.map((enrollment) => {
-            const progressRow = progressMap.get(enrollment.id)
-            const cLessons = courseLessonsMap.get(enrollment.courseId) || []
-            const firstIncomplete = cLessons.find((l) => !completedLessonSet.has(l.id)) || null
+            // Find next uncompleted lesson
+            const nextLesson = courseLessons.find((l) => !completedLessonIds.has(l.id)) || courseLessons[0]
 
             return {
-                enrollment_id: enrollment.id,
-                enrolled_at: enrollment.enrolledAt?.toISOString() || new Date().toISOString(),
-                progress: progressRow?.progressPercentage ?? 0,
-                completed: progressRow?.completed ?? false,
-                course: {
-                    id: enrollment.course.id,
-                    title: enrollment.course.title,
-                    slug: enrollment.course.slug,
-                    hero_image: enrollment.course.heroImage || null,
-                    estimated_hours: enrollment.course.estimatedHours || null,
-                },
-                firstLessonId: firstIncomplete?.stepOrder ?? null,
-                nextLessonTitle: firstIncomplete?.title ?? null,
+                id: enrollment.id,
+                courseId: enrollment.courseId,
+                title: course?.title || 'Untitled Course',
+                slug: course?.slug || '',
+                description: course?.description || '',
+                heroImage: course?.heroImage || '/assets/images/default.jpg',
+                category: course?.category || 'General',
+                level: course?.level || 'Beginner',
+                estimatedHours: course?.estimatedHours || 0,
+                enrolledAt: enrollment.enrolledAt,
+                progressPercentage: progressPct,
+                completed: progress?.completed || progressPct >= 100,
+                totalLessons,
+                completedLessons,
+                nextLesson: nextLesson ? {
+                    id: nextLesson.id,
+                    stepOrder: nextLesson.stepOrder,
+                    title: nextLesson.title,
+                } : null,
             }
         })
 
-        // 4. Calculate Stats
-        const coursesInProgress = formattedCourses.filter(
-            (c) => !c.completed && c.progress < 100
-        ).length
+        // 5. Fetch certificates
+        const userCertificates = await db.query.certificates.findMany({
+            where: eq(certificates.userId, userId),
+            orderBy: [desc(certificates.issuedAt)],
+            with: {
+                course: true,
+            },
+        })
 
-        const learningHours = Number(
-            formattedCourses
-                .reduce((total, c) => total + ((c.course.estimated_hours ?? 0) * c.progress) / 100, 0)
-                .toFixed(1)
-        )
+        const formattedCertificates = userCertificates.map((cert) => ({
+            id: cert.id,
+            certificateCode: cert.certificateCode,
+            courseTitle: cert.course?.title || 'Course Certificate',
+            courseSlug: cert.course?.slug || '',
+            issuedAt: cert.issuedAt,
+            pdfUrl: cert.pdfUrl,
+        }))
 
-        // Count certificates
-        let certificatesCount = 0
-        try {
-            const certs = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(certificates)
-                .where(and(eq(certificates.userId, userId), isNull(certificates.revokedAt)))
-            certificatesCount = Number(certs[0]?.count ?? 0)
-        } catch {
-            // certificates table might be empty or unmigrated
-        }
+        // 6. Fetch live class registrations
+        const registrations = await db.query.liveClassRegistrations.findMany({
+            where: eq(liveClassRegistrations.userId, userId),
+            orderBy: [desc(liveClassRegistrations.createdAt)],
+            with: {
+                liveClass: true,
+            },
+        })
 
-        // Count forum posts
-        let forumPostsCount = 0
-        try {
-            const posts = await db
-                .select({ count: sql<number>`count(*)` })
-                .from(forumPosts)
-                .where(eq(forumPosts.userId, userId))
-            forumPostsCount = Number(posts[0]?.count ?? 0)
-        } catch {
-            // forumPosts might be empty
-        }
+        const formattedLiveClasses = registrations.map((reg) => ({
+            id: reg.id,
+            status: reg.registrationStatus,
+            registeredAt: reg.createdAt,
+            liveClass: reg.liveClass ? {
+                id: reg.liveClass.id,
+                title: reg.liveClass.title,
+                instructorName: reg.liveClass.instructorName,
+                scheduledAt: reg.liveClass.startAt,
+                durationMinutes: reg.liveClass.endAt ? Math.round((new Date(reg.liveClass.endAt).getTime() - new Date(reg.liveClass.startAt).getTime()) / 60000) : 60,
+                meetingUrl: reg.liveClass.meetingUrl,
+                status: reg.liveClass.status,
+            } : null,
+        }))
 
-        // 5. Secondary widgets: Discussions, Upcoming Events, Live Schedules
-        let discussionUpdates: any[] = []
-        try {
-            const topics = await db.query.forumTopics.findMany({
-                where: eq(forumTopics.userId, userId),
-                orderBy: [desc(forumTopics.updatedAt)],
-                limit: 4,
-                columns: {
-                    id: true,
-                    title: true,
-                },
-            })
+        // 7. Community activity (forum posts)
+        const recentPosts = await db.query.forumPosts.findMany({
+            where: eq(forumPosts.userId, userId),
+            orderBy: [desc(forumPosts.createdAt)],
+            limit: 5,
+            with: {
+                topic: true,
+            },
+        })
 
-            discussionUpdates = topics.map((t) => ({
-                id: t.id,
-                title: t.title,
-                latestReply: 'Recent reply',
-                replies: 0,
-            }))
-        } catch {
-            // Ignore
-        }
+        const formattedPosts = recentPosts.map((p) => ({
+            id: p.id,
+            content: p.content,
+            createdAt: p.createdAt,
+            topicTitle: p.topic?.title || 'Forum Discussion',
+        }))
 
-        let upcomingEvents: any[] = []
-        try {
-            const now = new Date()
-            const retries = await db.query.certificationAttempts.findMany({
-                where: and(
-                    eq(certificationAttempts.userId, userId),
-                    gte(certificationAttempts.nextRetryAt, now)
-                ),
-                limit: 3,
-                with: {
-                    course: {
-                        columns: { title: true },
-                    },
-                },
-            })
-
-            upcomingEvents = retries.map((r) => ({
-                id: r.id,
-                title: `${(r as any).course?.title || 'Course'} Certification Retake`,
-                date: r.nextRetryAt ? r.nextRetryAt.toISOString() : '',
-                duration: '60 min',
-            }))
-        } catch {
-            // Ignore
-        }
-
-        let liveSchedules: any[] = []
-        try {
-            const liveRegs = await db.query.liveClassRegistrations.findMany({
-                where: eq(liveClassRegistrations.userId, userId),
-                orderBy: [desc(liveClassRegistrations.createdAt)],
-                with: {
-                    liveClass: true,
-                },
-            })
-
-            liveSchedules = liveRegs.map((reg) => ({
-                id: reg.id,
-                liveClassId: reg.liveClassId,
-                title: reg.liveClass?.title || 'Live Class',
-                startAt: reg.liveClass?.startAt ? reg.liveClass.startAt.toISOString() : '',
-                platform: reg.liveClass?.meetingPlatform || 'Zoom',
-                meetingUrl: reg.liveClass?.meetingUrl || null,
-                paymentStatus: reg.paymentStatus || 'unpaid',
-                registrationStatus: reg.registrationStatus || 'registered',
-            }))
-        } catch {
-            // Ignore
-        }
+        // 8. Overall student statistics
+        const completedCoursesCount = enrolledCourses.filter((c) => c.completed).length
+        const inProgressCoursesCount = enrolledCourses.filter((c) => !c.completed).length
+        const averageProgress = enrolledCourses.length > 0
+            ? Math.round(enrolledCourses.reduce((sum, c) => sum + c.progressPercentage, 0) / enrolledCourses.length)
+            : 0
 
         return NextResponse.json({
-            courses: formattedCourses,
             stats: {
-                coursesInProgress,
-                certificatesEarned: certificatesCount,
-                learningHours,
-                forumPosts: forumPostsCount,
+                totalEnrolled: enrolledCourses.length,
+                completedCourses: completedCoursesCount,
+                inProgressCourses: inProgressCoursesCount,
+                averageProgress,
+                certificatesCount: formattedCertificates.length,
+                liveClassesCount: formattedLiveClasses.length,
             },
-            discussionUpdates,
-            upcomingEvents,
-            liveSchedules,
+            enrolledCourses,
+            certificates: formattedCertificates,
+            liveClasses: formattedLiveClasses,
+            recentPosts: formattedPosts,
         })
     } catch (err: any) {
-        console.error('Dashboard data fetch error:', err)
+        console.error('Student dashboard error:', err)
         return NextResponse.json(
-            { error: err?.message || 'Failed to fetch dashboard data' },
+            { error: err?.message || 'Failed to load student dashboard' },
             { status: 500 }
         )
     }
 }
-

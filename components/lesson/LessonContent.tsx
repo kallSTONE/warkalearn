@@ -3,10 +3,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { useSupabase } from "@/components/providers/supabase-provider";
 import { Loader2 } from "lucide-react";
-   
+
 export function LessonContent({
   slug,  
   courseId,
@@ -30,40 +29,34 @@ export function LessonContent({
         return;
       }
 
-      const numericCourseId = Number(courseId);
-      if (!Number.isFinite(numericCourseId)) {
+      try {
+        const res = await fetch(`/api/courses/${encodeURIComponent(slug)}/lesson/${lessonNumber}`);
+        if (!res.ok) {
+          if (res.status === 401) {
+            router.push("/login");
+          } else {
+            router.push("/learn");
+          }
+          return;
+        }
+
+        const data = await res.json();
+        if (data.currentLesson) {
+          setLesson(data.currentLesson);
+          setAuthorized(true);
+        } else {
+          router.push("/learn");
+        }
+      } catch (err) {
+        console.error("Failed to load lesson:", err);
         router.push("/learn");
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      // Check enrollment
-      const { data: enrollment } = await supabase
-        .from("course_enrollments")
-        .select("id")
-        .eq("course_id", numericCourseId)
-        .eq("user_id", user.id)
-        .single();
-
-      if (!enrollment) {
-        router.push("/learn");
-        return;
-      }
-
-      // Fetch lesson data
-      const { data: lessonData } = await supabase
-        .from("lessons")
-        .select("*")
-        .eq("course_id", numericCourseId)
-        .eq("lesson_number", lessonNumber)
-        .single();
-
-      setLesson(lessonData);
-      setAuthorized(true);
-      setLoading(false);
     };
 
     checkAccess();
-  }, [user, userLoading, courseId, lessonNumber]);
+  }, [user, userLoading, slug, lessonNumber, router]);
 
   if (loading || userLoading)
     return (
@@ -81,7 +74,6 @@ export function LessonContent({
         <h2 className="font-semibold mb-3">Course Lessons</h2>
         <ul className="space-y-2">
           <li className="text-blue-600 font-medium">Lesson {lessonNumber}</li>
-          {/* later map real lessons here */}
         </ul>
       </aside>
 
@@ -91,7 +83,7 @@ export function LessonContent({
           {lesson?.title || `Lesson ${lessonNumber}`}
         </h1>
         <p className="text-gray-700 leading-relaxed">
-          {lesson?.content || "Lesson content coming soon..."}
+          {lesson?.description || lesson?.summary || "Lesson content coming soon..."}
         </p>
 
         <div className="mt-8 flex justify-between">

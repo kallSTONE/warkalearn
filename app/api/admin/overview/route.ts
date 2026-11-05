@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/db'
-import { profiles, courses, courseEnrollments, courseProgress, shopOrders, forumTopics, certificates, liveClassRegistrations } from '@/db/schema'
+import { db, ensureSchemaSynced } from '@/db'
+import { profiles, users, courses, courseEnrollments, courseProgress, shopOrders, forumTopics, certificates, liveClassRegistrations } from '@/db/schema'
 import { requireAdminRequest } from '@/lib/server/api-auth'
 
 export const dynamic = 'force-dynamic'
@@ -248,9 +248,12 @@ export async function GET(request: Request) {
     const currentMonthKey = monthBuckets[monthBuckets.length - 1]?.key ?? ''
     const previousMonthKey = monthBuckets[monthBuckets.length - 2]?.key ?? ''
 
-    const [rawProfiles, rawCourses, rawEnrollments, rawProgress, rawOrders, rawTopics, rawCertificates, rawLiveRegistrations] =
+    await ensureSchemaSynced()
+
+    const [rawProfiles, rawUsers, rawCourses, rawEnrollments, rawProgress, rawOrders, rawTopics, rawCertificates, rawLiveRegistrations] =
       await Promise.all([
         db.select().from(profiles),
+        db.select({ id: users.id, email: users.email }).from(users),
         db.select().from(courses),
         db.select().from(courseEnrollments),
         db.select().from(courseProgress),
@@ -259,6 +262,11 @@ export async function GET(request: Request) {
         db.select().from(certificates),
         db.select().from(liveClassRegistrations),
       ])
+
+    const userEmailById = new Map<string, string>()
+    rawUsers.forEach((u) => {
+      if (u.id && u.email) userEmailById.set(u.id, u.email)
+    })
 
     const allProfiles = rawProfiles.map((r) => ({
       id: r.id,
@@ -603,7 +611,7 @@ export async function GET(request: Request) {
         id: profile.id,
         number: index + 1,
         name: profile.full_name?.trim() || `Student ${index + 1}`,
-        email: 'Not available',
+        email: userEmailById.get(profile.id) || 'Not available',
         enrolledCourses: coursesForStudent.length,
         completedCourses,
         courses: coursesForStudent,

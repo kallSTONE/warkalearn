@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import TransitionLink from "@/components/transition-link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { supabase } from "@/lib/supabase"
 import {
   BarChart,
   Bar,
@@ -91,19 +90,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        const accessToken = session?.access_token
-        if (!accessToken) {
-          throw new Error("Missing session token.")
-        }
-
         const response = await fetch("/api/admin/overview", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
           cache: "no-store",
         })
 

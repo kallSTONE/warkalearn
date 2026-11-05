@@ -18,7 +18,6 @@ import {
   BarChart,
   Bar,
 } from "recharts"
-import { supabase } from "@/lib/supabase"
 import { Activity, DollarSign, LayoutDashboard, Users } from "lucide-react"
 
 type DashboardStat = {

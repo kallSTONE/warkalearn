@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { Course } from '@/lib/types'
 import { BookOpen, Clock, Star, Users, Signal, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -68,51 +67,45 @@ export function CourseDetails() {
         // 🔄 Fetch fresh data from Supabase in background
         const fetchCourse = async () => {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('courses')
-                .select('*, lessons(*)')
-                .eq('slug', slug)
-                .single()
+            try {
+                const res = await fetch(`/api/courses/${encodeURIComponent(slug)}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data && !data.error) {
+                        const updatedCourse: Course = {
+                            id: data.id,
+                            title: data.title,
+                            slug: data.slug,
+                            description: data.description || '',
+                            hero_image: data.hero_image || '/assets/images/default.jpg',
+                            category: data.category ?? '',
+                            level: data.level ?? '',
+                            estimated_hours: data.estimated_hours || 0,
+                            requirements: data.requirements || 'Basic',
+                            skills: data.skills || '',
+                            students: data.students || 0,
+                            rating: data.rating || 0,
+                            featured: data.featured || false,
+                            lessons: (data.lessons || []).map((lesson: any) => ({
+                                id: lesson.id,
+                                title: lesson.title,
+                                description: lesson.description || '',
+                                estimated_time: lesson.estimated_time || 0,
+                                topics: lesson.topics || [],
+                                step_order: lesson.step_order || 0,
+                            })),
+                            reviews: [],
+                        }
 
-
- 
-            if (!error && data) {
-                // 🔹 Normalize the Supabase data structure
-                const updatedCourse: Course = {
-                    id: data.id,
-                    title: data.title,
-                    slug: data.slug,
-                    description: data.description || '',
-                    hero_image: data.hero_image || '/assets/images/default.jpg',
-                    category: data.category ?? '',
-                    level: data.level ?? '',
-                    estimated_hours: data.estimated_hours || 0,
-                    requirements: data.requirements || 'Basic',
-                    skills: data.skills || '',
-                    students: data.students || 0,
-                    rating: data.rating || 0,
-                    featured: data.featured || false,
-                    // ✅ Always REPLACE lessons instead of merging
-                    lessons: (data.lessons || []).map((lesson: any) => ({
-                        id: lesson.id,
-                        title: lesson.title,
-                        description: lesson.description || '',
-                        estimated_time: lesson.estimated_time || 0,
-                        topics: lesson.topics || [],
-                        step_order: lesson.step_order || 0,
-                    })),
-                    reviews: [],
+                        setCourse(updatedCourse)
+                        localStorage.setItem(`course_${slug}`, JSON.stringify(updatedCourse))
+                    }
                 }
-
-                // 🧠 Replace the entire course — do NOT merge
-                setCourse(() => updatedCourse)
-
-                // 🗄️ Cache the new data for future fast loads
-                localStorage.setItem(`course_${slug}`, JSON.stringify(updatedCourse))
+            } catch (err) {
+                console.error('Failed to fetch course details:', err)
+            } finally {
+                setLoading(false)
             }
- 
-
-            setLoading(false)
         }
 
         fetchCourse()

@@ -79,7 +79,7 @@ export default function Header() {
   const [cartCount, setCartCount] = useState(0)
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith('/admin')
-  const { user, supabase } = useSupabase()
+  const { user } = useSupabase()
   const { locale, setLocale, t } = useLanguage()
   const studentExcludedIds = ['community', 'about']
   const adminExcludedIds = ['my-account']
@@ -121,27 +121,37 @@ export default function Header() {
 
   useEffect(() => {
     const loadCartCount = async () => {
-      if (!user || (user.user_metadata?.role !== 'student')) {
+      if (!user) {
         setCartCount(0)
         return
       }
 
-      const { count, error } = await supabase
-        .from('shop_cart_items')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Failed to load cart count:', error)
+      try {
+        const res = await fetch('/api/shop/cart', { cache: 'no-store' })
+        if (!res.ok) {
+          setCartCount(0)
+          return
+        }
+        const json = await res.json()
+        const cartItems = (json?.data as any[]) || []
+        const count = cartItems.reduce((sum: number, item: any) => sum + (item.quantity ?? 1), 0)
+        setCartCount(count)
+      } catch (err) {
         setCartCount(0)
-        return
       }
-
-      setCartCount(count ?? 0)
     }
 
     void loadCartCount()
-  }, [supabase, user])
+
+    const onCartUpdate = () => {
+      void loadCartCount()
+    }
+
+    window.addEventListener('cart-updated', onCartUpdate)
+    return () => {
+      window.removeEventListener('cart-updated', onCartUpdate)
+    }
+  }, [user])
 
   return (
     <header className={cn(

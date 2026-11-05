@@ -128,21 +128,36 @@ export default function RegisterPage() {
 
   const startEmailRegistration = async () => {
     const normalizedEmail = identifier.trim().toLowerCase()
-    const metadata: Record<string, string> = {
-      full_name: fullName.trim(),
+
+    const res = await fetch('/api/auth/email/start-register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        fullName: fullName.trim(),
+        password,
+        referralCode: referralCode.trim() || undefined,
+      }),
+    })
+
+    const payload = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      throw new Error(payload?.error || 'Failed to start email registration.')
     }
 
-    if (referralCode.trim()) {
-      const normalizedReferralCode = referralCode.trim().toUpperCase()
-      metadata.referral_code = normalizedReferralCode
+    const ticketToken = payload.ticketToken
+    const email = payload.email
+    const maskedEmail = payload.maskedEmail || email
+    const retryAfterSeconds = payload.retryAfterSeconds || DEFAULT_RESEND_SECONDS
 
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('pendingReferralCode', normalizedReferralCode)
-      }
-    }
-
-    await signUp(normalizedEmail, password, metadata)
-    router.push('/dashboard')
+    router.push(
+      `/register/email/verify?ticket=${encodeURIComponent(ticketToken)}&email=${encodeURIComponent(
+        email
+      )}&masked=${encodeURIComponent(maskedEmail)}&retry=${encodeURIComponent(
+        String(retryAfterSeconds)
+      )}`
+    )
   }
 
   const handleSubmit = async (event: React.FormEvent) => {

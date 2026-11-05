@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { supabase } from "@/lib/supabase"
 import { Search, Plus, Mail, Edit2, Trash2 } from "lucide-react"
 
 interface Student {
@@ -62,19 +61,7 @@ export default function StudentsPage() {
       setLoadError(null)
 
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        const accessToken = session?.access_token
-        if (!accessToken) {
-          throw new Error("Missing session token.")
-        }
-
         const response = await fetch("/api/admin/overview", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
           cache: "no-store",
         })
 

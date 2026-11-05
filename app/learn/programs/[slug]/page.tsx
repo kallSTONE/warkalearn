@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import TransitionLink from "@/components/transition-link"
-import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,21 +59,19 @@ export default function ProgramDetailPage() {
 
         const loadProgram = async () => {
             setLoading(true)
-            const { data, error } = await supabase
-                .from("programs")
-                .select(
-                    "id, title, slug, description, status, thumbnail, price, program_courses (sort_order, is_required, courses (id, title, slug, description, hero_image, category, level, estimated_hours, students, rating))"
-                )
-                .eq("slug", programSlug)
-                .eq("status", "published")
-                .order("sort_order", { foreignTable: "program_courses", ascending: true })
-                .single()
-
-            if (!error && data) {
-                setProgram(data as ProgramRow)
+            try {
+                const res = await fetch(`/api/programs/${encodeURIComponent(programSlug)}`)
+                if (res.ok) {
+                    const json = await res.json()
+                    if (json?.data) {
+                        setProgram(json.data as ProgramRow)
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load program detail:', err)
+            } finally {
+                setLoading(false)
             }
-
-            setLoading(false)
         }
 
         loadProgram()

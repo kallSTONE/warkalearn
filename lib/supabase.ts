@@ -1,32 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || ''
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || 'https://placeholder.supabase.co'
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1NDA5OTYsImV4cCI6MjA4MDExNjk5Nn0.placeholder'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-        'Missing Supabase public credentials. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-    )
-}
-
-let parsedSupabaseUrl: URL
-
-try {
-    parsedSupabaseUrl = new URL(supabaseUrl)
-} catch {
-    throw new Error(
-        'Invalid NEXT_PUBLIC_SUPABASE_URL. Expected a full URL like https://<project-ref>.supabase.co.'
-    )
-}
-
-if (parsedSupabaseUrl.hostname === 'api.supabase.com') {
-    throw new Error(
-        'NEXT_PUBLIC_SUPABASE_URL must be your project URL (https://<project-ref>.supabase.co), not api.supabase.com.'
-    )
-}
-
-// This creates a singleton instance of the Supabase client
+// Fallback client for backward compatibility with components migrating off Supabase
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 export default supabase

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import TransitionLink from "@/components/transition-link"
-import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,16 +33,15 @@ export default function ProgramSpotlightModal({
 
     useEffect(() => {
         const loadProgram = async () => {
-            const { data, error } = await supabase
-                .from("programs")
-                .select("id, title, slug, description, thumbnail, price, program_courses(id)")
-                .eq("status", "published")
-                .order("created_at", { ascending: true })
-                .limit(1)
-                .maybeSingle()
-
-            if (!error && data) {
-                setProgram(data as ProgramRow)
+            try {
+                const res = await fetch('/api/programs')
+                if (!res.ok) return
+                const json = await res.json()
+                if (json?.data && json.data.length > 0) {
+                    setProgram(json.data[0] as ProgramRow)
+                }
+            } catch (err) {
+                console.error('Failed to load spotlight program:', err)
             }
         }
 

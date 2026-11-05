@@ -23,7 +23,6 @@ import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronRight } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { supabase } from '@/lib/supabase'
 
 type TopicItem = { key: string; value: string }
 
@@ -66,6 +65,7 @@ export default function EditCoursePage() {
     const [rating, setRating] = useState<number | ''>('')
     const [introVideoUrl, setIntroVideoUrl] = useState('')
     const [introMediaId, setIntroMediaId] = useState<number | null>(null)
+    const [deletedLessonIds, setDeletedLessonIds] = useState<number[]>([])
     const [deleteLessonIdx, setDeleteLessonIdx] = useState<number | null>(null)
     const [deleteLessonInput, setDeleteLessonInput] = useState('')
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -94,114 +94,84 @@ export default function EditCoursePage() {
         if (!id) return
         const load = async () => {
             setLoading(true)
-            const { data: courseData, error: courseErr } = await supabase
-                .from('courses')
-                .select('*')
-                .eq('id', id)
-                .single()
+            try {
+                const res = await fetch(`/api/admin/courses/${id}`, { cache: 'no-store' })
+                const data = await res.json()
+                if (!res.ok) {
+                    toast({ title: 'Error', description: data?.error || 'Failed to load course' })
+                    setLoading(false)
+                    return
+                }
 
-            if (courseErr) {
-                setLoading(false)
-                toast({ title: 'Error', description: courseErr.message })
-                return
-            }
+                const courseData = data.course
+                const lessonsData = data.lessons || []
+                const notesData = data.reviewNotes || []
+                const introMedia = data.introMedia
 
-            const { data: lessonsData, error: lessonsErr } = await supabase
-                .from('lessons')
-                .select(`
-                *,
-                lesson_downloads (*)
-            `)
-                .eq('course_id', id)
-                .order('step_order', { ascending: true })
+                setCourse(courseData)
+                setReviewNotes(notesData || [])
 
-            const { data: notesData } = await supabase
-                .from('course_review_notes')
-                .select('id, content, status, reviewer_id, created_at, addressed')
-                .eq('course_id', id)
-                .order('created_at', { ascending: false })
-
-            const { data: introMedia, error: introErr } = await supabase
-                .from('course_media')
-                .select('id, url')
-                .eq('course_id', id)
-                .eq('type', 'intro')
-                .maybeSingle()
-
-            setLoading(false)
-
-            if (lessonsErr) {
-                toast({ title: 'Error', description: lessonsErr.message })
-                return
-            }
-
-            if (introErr) {
-                console.error(introErr)
-            }
-
-            setCourse(courseData)
-            setReviewNotes(notesData || [])
-            const normalizedLessons = (lessonsData || []).map((l: any) => {
-                // Normalize topics into array of {key, value}
-                let topicsArr: TopicItem[] = []
-                if (l.topics) {
-                    try {
-                        const topicsObj = typeof l.topics === 'string' ? JSON.parse(l.topics) : l.topics
-                        if (topicsObj && typeof topicsObj === 'object' && !Array.isArray(topicsObj)) {
-                            topicsArr = Object.entries(topicsObj).map(([k, v]) => ({ key: k, value: String(v) }))
+                const normalizedLessons = (lessonsData || []).map((l: any) => {
+                    let topicsArr: TopicItem[] = []
+                    if (l.topics) {
+                        try {
+                            const topicsObj = typeof l.topics === 'string' ? JSON.parse(l.topics) : l.topics
+                            if (topicsObj && typeof topicsObj === 'object' && !Array.isArray(topicsObj)) {
+                                topicsArr = Object.entries(topicsObj).map(([k, v]) => ({ key: k, value: String(v) }))
+                            }
+                        } catch (e) {
+                            topicsArr = []
                         }
-                    } catch (e) {
-                        // fallback: ignore parse errors
-                        topicsArr = []
                     }
+                    return {
+                        ...l,
+                        clientKey: `lesson-${l.id}`,
+                        title: l.title ?? '',
+                        description: l.description ?? '',
+                        estimated_time: l.estimated_time ?? null,
+                        step_order: l.step_order ?? null,
+                        video_url: l.video_url ?? (l.topics?.video ?? null),
+                        topicsArr,
+                        downloads: (l.lesson_downloads || l.downloads || []).map((d: any) => ({
+                            id: d.id,
+                            title: d.title ?? '',
+                            description: d.description ?? '',
+                            file_url: d.file_url ?? '',
+                            file_type: d.file_type ?? '',
+                            file_size: d.file_size ?? null,
+                        })),
+                    }
+                })
+
+                setLessons(normalizedLessons)
+                setLessonOpen(prev => computeOpenState(normalizedLessons, prev))
+
+                setTitle(courseData.title ?? '')
+                setSlug(courseData.slug ?? '')
+                setDescription(courseData.description ?? '')
+                setImage(courseData.hero_image ?? '')
+                setCategory(courseData.category ?? '')
+                const nextLevel = (courseData.level === 'Beginner' || courseData.level === 'Intermediate' || courseData.level === 'Advanced')
+                    ? courseData.level
+                    : 'Beginner'
+                setLevel(nextLevel)
+                setEstimatedHours(courseData.estimated_hours ? String(courseData.estimated_hours) : '')
+                setRequirements(courseData.requirements ?? '')
+                setSkills(courseData.skills ?? '')
+                setFeatured(Boolean(courseData.featured))
+                setIsPaid(Boolean(courseData.is_paid))
+                setPrice(courseData.price === null || courseData.price === undefined ? '3000' : String(courseData.price))
+                setStudents(courseData.students ?? 0)
+                setRating(courseData.rating ?? 0)
+
+                if (introMedia) {
+                    setIntroVideoUrl(introMedia.url ?? '')
+                    setIntroMediaId(introMedia.id ?? null)
                 }
-                return {
-                    ...l,
-                    clientKey: `lesson-${l.id}`,
-                    // use explicit names that match the DB for updating
-                    title: l.title ?? '',
-                    description: l.description ?? '',
-                    estimated_time: l.estimated_time ?? null,
-                    step_order: l.step_order ?? null,
-                    video_url: l.video_url ?? (l.topics?.video ?? null),
-                    topicsArr,
-                    downloads: (l.lesson_downloads || []).map((d: any) => ({
-                        id: d.id,
-                        title: d.title ?? '',
-                        description: d.description ?? '',
-                        file_url: d.file_url ?? '',
-                        file_type: d.file_type ?? '',
-                        file_size: d.file_size ?? null,
-                    }))
-
-                }
-            })
-
-            setLessons(normalizedLessons)
-            setLessonOpen(prev => computeOpenState(normalizedLessons, prev))
-
-            // populate course fields
-            setTitle(courseData.title ?? '')
-            setSlug(courseData.slug ?? '')
-            setDescription(courseData.description ?? '')
-            setImage(courseData.hero_image ?? '')
-            setCategory(courseData.category ?? '')
-            const nextLevel = (courseData.level === 'Beginner' || courseData.level === 'Intermediate' || courseData.level === 'Advanced')
-                ? courseData.level
-                : 'Beginner'
-            setLevel(nextLevel)
-            setEstimatedHours(courseData.estimated_hours ? String(courseData.estimated_hours) : '')
-            setRequirements(courseData.requirements ?? '')
-            setSkills(courseData.skills ?? '')
-            setFeatured(Boolean(courseData.featured))
-            setIsPaid(Boolean(courseData.is_paid))
-            setPrice(courseData.price === null || courseData.price === undefined ? '3000' : String(courseData.price))
-            setStudents(courseData.students ?? 0)
-            setRating(courseData.rating ?? 0)
-
-            if (introMedia) {
-                setIntroVideoUrl(introMedia.url ?? '')
-                setIntroMediaId(introMedia.id ?? null)
+            } catch (err: any) {
+                toast({ title: 'Error', description: err.message })
+            } finally {
+                setLoading(false)
             }
         }
 
@@ -316,34 +286,16 @@ export default function EditCoursePage() {
     }
 
     const performLessonDeletion = (index: number) => {
-        // if lesson exists in DB (has id) we mark for deletion by filtering on save or call delete now
         const l = lessons[index]
         if (l?.id) {
-            // call delete immediately
-            (async () => {
-                setLoading(true)
-                const { error } = await supabase.from('lessons').delete().eq('id', l.id)
-                setLoading(false)
-                if (error) {
-                    toast({ title: 'Error', description: error.message })
-                    return
-                }
-                // remove locally
-                setLessons(prev => {
-                    const updated = prev.filter((_, i) => i !== index)
-                    setLessonOpen(openPrev => computeOpenState(updated, openPrev))
-                    return updated
-                })
-                toast({ title: 'Deleted', description: 'Lesson removed.' })
-            })()
-        } else {
-            // just remove locally
-            setLessons(prev => {
-                const updated = prev.filter((_, i) => i !== index)
-                setLessonOpen(openPrev => computeOpenState(updated, openPrev))
-                return updated
-            })
+            setDeletedLessonIds(prev => [...prev, l.id])
         }
+        setLessons(prev => {
+            const updated = prev.filter((_, i) => i !== index)
+            setLessonOpen(openPrev => computeOpenState(updated, openPrev))
+            return updated
+        })
+        toast({ title: 'Lesson removed', description: 'Click Save Changes to persist changes.' })
     }
 
     const openDeleteDialog = (index: number) => {
@@ -375,7 +327,7 @@ export default function EditCoursePage() {
                 return
             }
 
-            const coursePayload: any = {
+            const payload = {
                 title,
                 slug,
                 description,
@@ -390,153 +342,41 @@ export default function EditCoursePage() {
                 price: Boolean(isPaid) ? parsedPrice : null,
                 students: students ? Number(students) : 0,
                 rating: rating ? Number(rating) : 0,
-            }
-
-            const { error: updateError } = await supabase.from('courses').update(coursePayload).eq('id', id)
-            if (updateError) throw updateError
-
-            const trimmedIntro = introVideoUrl.trim()
-            if (trimmedIntro) {
-                if (introMediaId) {
-                    const { error: introUpdateError } = await supabase
-                        .from('course_media')
-                        .update({ url: trimmedIntro, provider: 'youtube', type: 'intro' })
-                        .eq('id', introMediaId)
-
-                    if (introUpdateError) throw introUpdateError
-                } else {
-                    const { data: introInsert, error: introInsertError } = await supabase
-                        .from('course_media')
-                        .insert({
-                            course_id: id,
-                            type: 'intro',
-                            provider: 'youtube',
-                            url: trimmedIntro,
+                introVideoUrl: introVideoUrl.trim(),
+                lessons: lessons.map(l => {
+                    const topicsObj: Record<string, string> = {}
+                    if (Array.isArray(l.topicsArr)) {
+                        l.topicsArr.forEach((t: TopicItem) => {
+                            if (t.key && t.key.trim() !== '') {
+                                topicsObj[t.key] = t.value ?? ''
+                            }
                         })
-                        .select('id')
-                        .single()
-
-                    if (introInsertError) throw introInsertError
-                    setIntroMediaId(introInsert?.id ?? null)
-                }
-            } else if (introMediaId) {
-                const { error: introDeleteError } = await supabase
-                    .from('course_media')
-                    .delete()
-                    .eq('id', introMediaId)
-
-                if (introDeleteError) throw introDeleteError
-                setIntroMediaId(null)
-            }
-
-            // Update or insert lessons; also delete any lessons that were removed locally earlier (optional)
-            // We'll iterate current lessons; if an existing lesson in DB was removed by user we assume they called delete -> handled immediately in removeLesson
-            for (let idx = 0; idx < lessons.length; idx++) {
-                const l = lessons[idx]
-
-                // Build topics object (Option A)
-                const topicsObj: Record<string, string> = {}
-                if (Array.isArray(l.topicsArr)) {
-                    l.topicsArr.forEach((t: TopicItem) => {
-                        if (t.key && t.key.trim() !== '') {
-                            topicsObj[t.key] = t.value ?? ''
-                        }
-                    })
-                } else if (l.topics && typeof l.topics === 'object' && !Array.isArray(l.topics)) {
-                    // fallback if topics already object
-                    Object.assign(topicsObj, l.topics)
-                }
-
-                if (l.id) {
-                    // update existing lesson
-                    const { error } = await supabase
-                        .from('lessons')
-                        .update({
-                            title: l.title ?? '',
-                            description: l.description ?? null,
-                            estimated_time: l.estimated_time ? Number(l.estimated_time) : null,
-                            step_order: l.step_order ? Number(l.step_order) : null,
-                            topics: Object.keys(topicsObj).length > 0 ? topicsObj : null,
-                            video_url: l.video_url ?? null,
-                        })
-                        .eq('id', l.id)
-
-                    if (error) throw error
-                } else {
-                    const { data: insertedLesson, error } = await supabase
-                        .from('lessons')
-                        .insert({
-                            course_id: id,
-                            title: l.title ?? '',
-                            description: l.description ?? null,
-                            estimated_time: l.estimated_time ? Number(l.estimated_time) : null,
-                            step_order: l.step_order ? Number(l.step_order) : null,
-                            topics: Object.keys(topicsObj).length > 0 ? topicsObj : null,
-                            video_url: l.video_url ?? null,
-                        })
-                        .select()
-                        .single()
-
-                    if (error) throw error
-
-                    // IMPORTANT: assign ID back to lesson in state
-                    l.id = insertedLesson.id
-                }
-
-                // ================= DOWNLOADS SYNC START =================
-
-                // Always work with an array
-                const downloads = l.downloads ?? []
-
-                // 1. Collect IDs of downloads that still exist in UI
-                const keptDownloadIds = downloads
-                    .filter((d: any) => d.id)
-                    .map((d: any) => d.id)
-
-                // 2. Delete downloads that were removed in UI
-                if (keptDownloadIds.length > 0) {
-                    await supabase
-                        .from('lesson_downloads')
-                        .delete()
-                        .eq('lesson_id', l.id)
-                        .not('id', 'in', `(${keptDownloadIds.join(',')})`)
-                } else {
-                    await supabase
-                        .from('lesson_downloads')
-                        .delete()
-                        .eq('lesson_id', l.id)
-                }
-
-                // 3. Insert or update current downloads
-                for (const d of downloads) {
-                    if (d.id) {
-                        await supabase
-                            .from('lesson_downloads')
-                            .update({
-                                title: d.title,
-                                description: d.description || null,
-                                file_url: d.file_url,
-                                file_type: d.file_type,
-                                file_size: d.file_size,
-                            })
-                            .eq('id', d.id)
-                    } else {
-                        await supabase
-                            .from('lesson_downloads')
-                            .insert({
-                                lesson_id: l.id,
-                                title: d.title,
-                                description: d.description || null,
-                                file_url: d.file_url,
-                                file_type: d.file_type,
-                                file_size: d.file_size,
-                            })
+                    } else if (l.topics && typeof l.topics === 'object' && !Array.isArray(l.topics)) {
+                        Object.assign(topicsObj, l.topics)
                     }
-                }
+                    return {
+                        id: l.id,
+                        title: l.title ?? '',
+                        description: l.description ?? null,
+                        estimated_time: l.estimated_time ? Number(l.estimated_time) : null,
+                        step_order: l.step_order ? Number(l.step_order) : null,
+                        topics: Object.keys(topicsObj).length > 0 ? topicsObj : null,
+                        video_url: l.video_url ?? null,
+                        downloads: l.downloads ?? [],
+                    }
+                }),
+                deletedLessonIds,
+            }
 
-                // ================= DOWNLOADS SYNC END =================
+            const res = await fetch(`/api/admin/courses/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
 
-
+            const resJson = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                throw new Error(resJson?.error || 'Failed to update course')
             }
 
             toast({ title: 'Saved', description: 'Course updated.' })
@@ -615,14 +455,19 @@ export default function EditCoursePage() {
                                                                     className="h-8 px-3"
                                                                     onClick={async () => {
                                                                         const next = !isAddressed
-                                                                        const { error } = await supabase
-                                                                            .from('course_review_notes')
-                                                                            .update({ addressed: next, status: next ? 'resolved' : 'open' })
-                                                                            .eq('id', n.id)
-                                                                        if (error) {
-                                                                            toast({ title: 'Update failed', description: error.message })
-                                                                        } else {
-                                                                            setReviewNotes((prev) => prev.map((x) => x.id === n.id ? { ...x, addressed: next, status: next ? 'resolved' : x.status } : x))
+                                                                        try {
+                                                                            const res = await fetch(`/api/admin/courses/${id}`, {
+                                                                                method: 'PATCH',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({ noteId: n.id, addressed: next }),
+                                                                            })
+                                                                            if (!res.ok) {
+                                                                                toast({ title: 'Update failed', description: 'Failed to update note' })
+                                                                            } else {
+                                                                                setReviewNotes((prev) => prev.map((x) => x.id === n.id ? { ...x, addressed: next, status: next ? 'resolved' : 'open' } : x))
+                                                                            }
+                                                                        } catch (e: any) {
+                                                                            toast({ title: 'Update failed', description: e.message })
                                                                         }
                                                                     }}
                                                                 >

@@ -841,6 +841,11 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   course: one(courses, { fields: [reviews.courseId], references: [courses.id] }),
 }))
 
+export const certificatesRelations = relations(certificates, ({ one }) => ({
+  course: one(courses, { fields: [certificates.courseId], references: [courses.id] }),
+  user: one(users, { fields: [certificates.userId], references: [users.id] }),
+}))
+
 export const programsRelations = relations(programs, ({ many }) => ({
   programCourses: many(programCourses),
   enrollments: many(programEnrollments),

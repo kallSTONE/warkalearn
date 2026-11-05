@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabase"
 import { useSupabase } from "@/components/providers/supabase-provider"
 
 type DraftRow = {
@@ -38,13 +37,10 @@ export default function DraftsPage() {
         if (loading) return
         setBusy(true)
         try {
-            const { data, error } = await supabase
-                .from("course_drafts")
-                .select("id,user_id,updated_at")
-                .order("updated_at", { ascending: false })
-
-            if (error) throw error
-            setRows((data as DraftRow[]) || [])
+            const res = await fetch('/api/admin/courses/drafts')
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'Failed to load drafts')
+            setRows((json.data as DraftRow[]) || [])
         } catch (e: any) {
             toast({ title: "Error", description: e?.message ?? "Failed to load drafts" })
         } finally {
@@ -61,8 +57,9 @@ export default function DraftsPage() {
         if (!user) return
         setBusy(true)
         try {
-            const { error } = await supabase.from("course_drafts").delete().neq("user_id", "")
-            if (error) throw error
+            const res = await fetch('/api/admin/courses/drafts?all=true', { method: 'DELETE' })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'Failed to clear drafts')
             toast({ title: "All drafts cleared" })
             loadDrafts()
         } catch (e: any) {
@@ -76,8 +73,9 @@ export default function DraftsPage() {
         if (!user) return
         setBusy(true)
         try {
-            const { error } = await supabase.from("course_drafts").delete().eq("user_id", user.id)
-            if (error) throw error
+            const res = await fetch('/api/admin/courses/drafts', { method: 'DELETE' })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'Failed to clear draft')
             toast({ title: "Your draft cleared" })
             loadDrafts()
         } catch (e: any) {

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import TransitionLink from "@/components/transition-link"
-import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -40,17 +39,19 @@ export default function ProgramsPage() {
     useEffect(() => {
         const loadPrograms = async () => {
             setLoading(true)
-            const { data, error } = await supabase
-                .from("programs")
-                .select("id, title, slug, description, status, thumbnail, price, program_courses(is_required)")
-                .eq("status", "published")
-                .order("created_at", { ascending: false })
-
-            if (!error && data) {
-                setPrograms(data as ProgramListItem[])
+            try {
+                const res = await fetch('/api/programs')
+                if (res.ok) {
+                    const json = await res.json()
+                    if (json?.data && Array.isArray(json.data)) {
+                        setPrograms(json.data as ProgramListItem[])
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load programs:', err)
+            } finally {
+                setLoading(false)
             }
-
-            setLoading(false)
         }
 
         loadPrograms()

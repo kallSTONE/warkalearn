@@ -40,6 +40,12 @@ export function useShopCart({ userId }: UseShopCartArgs = {}) {
     void refreshCart()
   }, [refreshCart])
 
+  const notifyCartChange = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cart-updated'))
+    }
+  }
+
   const addItem = useCallback(
     async (productId: string, quantity = 1) => {
       if (!userId) {
@@ -58,6 +64,7 @@ export function useShopCart({ userId }: UseShopCartArgs = {}) {
       }
 
       await refreshCart()
+      notifyCartChange()
     },
     [refreshCart, userId]
   )
@@ -80,6 +87,7 @@ export function useShopCart({ userId }: UseShopCartArgs = {}) {
       }
 
       await refreshCart()
+      notifyCartChange()
     },
     [refreshCart, userId]
   )
@@ -100,6 +108,7 @@ export function useShopCart({ userId }: UseShopCartArgs = {}) {
       }
 
       await refreshCart()
+      notifyCartChange()
     },
     [refreshCart, userId]
   )
@@ -121,6 +130,7 @@ export function useShopCart({ userId }: UseShopCartArgs = {}) {
     }
 
     await refreshCart()
+    notifyCartChange()
     return json?.orderId
   }, [refreshCart, userId])
 

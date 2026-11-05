@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import TransitionLink from '@/components/transition-link'
 import { Input } from "@/components/ui/input"
 import { Search, Plus, Edit2, Trash2, Eye } from "lucide-react"
-import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { formatEthiopianBirr } from '@/lib/shop'
 import {
