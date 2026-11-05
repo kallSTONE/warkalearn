@@ -258,15 +258,15 @@ export default function CoursesPage() {
             : reason === 'name-mismatch'
               ? 'Course name does not match exactly.'
               : reason === 'not-found'
-                ? 'Course not found.'
-                : payload?.error || 'Failed to delete course.'
+                ? 'Course matching your search has not been found. Change your search work or create new course'
+                : payload?.error || 'Failed to delete course. Please try again later. '
         toast({ title: 'Delete blocked', description: message })
         setSubmittingDelete(false)
         return
       }
 
       // Success: show alert, update local list, close dialog
-      toast({ title: 'Deleted', description: 'Course removed.' })
+      toast({ title: 'Deleted', description: 'Course removed Permanently.' })
       setCourses((prev) => prev.filter((c) => c.id !== selectedCourse.id))
       setDeleteDialogOpen(false)
     } catch (e: any) {
@@ -290,13 +290,13 @@ export default function CoursesPage() {
               variant={activeTab === 'courses' ? 'default' : 'outline'}
               onClick={() => setActiveTab('courses')}
             >
-              Courses
+              Course Management
             </Button>
             <Button
               variant={activeTab === 'programs' ? 'default' : 'outline'}
               onClick={() => setActiveTab('programs')}
             >
-              Programs
+              Program Management
             </Button>
           </div>
 
@@ -566,7 +566,7 @@ export default function CoursesPage() {
                 <TransitionLink href="/admin/courses/programs/new" className="no-underline">
                   <Button className="gap-2 hidden sm:inline-flex">
                     <Plus size={16} />
-                    New Program
+                    Creat New Program
                   </Button>
                 </TransitionLink>
               </div>
@@ -667,7 +667,7 @@ export default function CoursesPage() {
               onClick={confirmDelete}
               disabled={submittingDelete || !enteredCourseName || !adminPassword}
             >
-              {submittingDelete ? 'Deleting…' : 'Confirm delete'}
+              {submittingDelete ? 'Deleting…' : 'Delete Permanently.'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
