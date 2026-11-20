@@ -100,12 +100,16 @@ export default function StudentsPage() {
   }, [])
 
   const filteredStudents = useMemo(() => {
-    const q = searchTerm.toLowerCase()
+    const q = searchTerm.toLowerCase().trim()
+    if (!q) return students
     return students.filter((student) => {
-      return (
-        student.name.toLowerCase().includes(q) ||
-        student.id.toLowerCase().includes(q)
+      const matchName = student.name.toLowerCase().includes(q)
+      const matchId = student.id.toLowerCase().includes(q)
+      const matchEmail = (student.email || "").toLowerCase().includes(q)
+      const matchCourse = (student.courses || []).some((c) =>
+        c.title.toLowerCase().includes(q) || (c.slug || "").toLowerCase().includes(q)
       )
+      return matchName || matchId || matchEmail || matchCourse
     })
   }, [students, searchTerm])
 
@@ -180,18 +184,35 @@ export default function StudentsPage() {
   const completionRate = studentStats.completionRate
 
   const renderCourseBadges = (courses: StudentCourse[], completedOnly = false) => {
-    const visibleCourses = courses.filter((course) => (completedOnly ? course.completed : true))
-    const previewCourses = visibleCourses.slice(0, 3)
+    const visibleCourses = (courses || []).filter((course) => (completedOnly ? course.completed : true))
+    const previewCourses = visibleCourses.slice(0, 4)
 
     return (
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1 items-center">
         {previewCourses.map((course) => (
-          <Badge key={`${course.courseId}-${course.slug || course.title}`} variant={course.completed ? "default" : "outline"} className="max-w-full truncate">
+          <Badge
+            key={`${course.courseId}-${course.slug || course.title}`}
+            variant={course.completed ? "default" : "outline"}
+            className="max-w-[200px] truncate"
+            title={`${course.title}${course.progressPercentage !== null ? ` (${course.progressPercentage}%)` : ''}${course.enrolledAt ? ` - Enrolled ${new Date(course.enrolledAt).toLocaleDateString()}` : ''}`}
+          >
             {course.title}
+            {course.completed ? (
+              <span className="ml-1 text-[10px] text-emerald-500 font-semibold">✓</span>
+            ) : (
+              course.progressPercentage !== null && course.progressPercentage > 0 ? (
+                <span className="ml-1 text-[10px] opacity-75">({course.progressPercentage}%)</span>
+              ) : null
+            )}
           </Badge>
         ))}
         {visibleCourses.length > previewCourses.length ? (
-          <Badge variant="secondary">+{visibleCourses.length - previewCourses.length} more</Badge>
+          <Badge
+            variant="secondary"
+            title={visibleCourses.slice(previewCourses.length).map(c => c.title).join(', ')}
+          >
+            +{visibleCourses.length - previewCourses.length} more
+          </Badge>
         ) : null}
         {visibleCourses.length === 0 ? (
           <span className="text-xs text-muted-foreground">No courses</span>

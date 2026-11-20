@@ -181,7 +181,7 @@ export function LessonContent({
             <div className="mt-6">
               <h3 className="text-xl font-semibold text-foreground mb-4">{t('lessonContent.topicsCovered', 'Topics Covered')}</h3>
               <div className="flex flex-col gap-4">
-                {topics.map((topic) => (
+              {(Array.isArray(topics) ? topics : []).map((topic, idx) => (
                   <div key={topic.title} className="border rounded-md p-4 bg-card">
                     <h4 className="text-md font-medium text-foreground">{topic.title}</h4>
                     <p className="text-sm text-muted-foreground mt-1">{topic.description}</p>

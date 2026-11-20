@@ -117,16 +117,38 @@ export default function DashboardPage() {
         }
         const data = await res.json()
 
-        setCourses(data.courses || [])
-        setStats(data.stats || {
-          coursesInProgress: 0,
-          certificatesEarned: 0,
-          learningHours: 0,
-          forumPosts: 0,
+        const rawCourses = Array.isArray(data.courses)
+          ? data.courses
+          : (Array.isArray(data.enrolledCourses) ? data.enrolledCourses : [])
+
+        const formattedCourses: EnrolledCourse[] = rawCourses.map((item: any) => ({
+          enrollment_id: item.enrollment_id || item.id || String(item.courseId),
+          enrolled_at: item.enrolled_at || item.enrolledAt || '',
+          progress: typeof item.progress === 'number'
+            ? item.progress
+            : (typeof item.progressPercentage === 'number' ? item.progressPercentage : 0),
+          completed: Boolean(item.completed),
+          course: {
+            id: item.course?.id ?? item.courseId ?? 0,
+            title: item.course?.title || item.title || 'Untitled Course',
+            slug: item.course?.slug || item.slug || '',
+            hero_image: item.course?.hero_image || item.heroImage || null,
+            estimated_hours: item.course?.estimated_hours ?? item.estimatedHours ?? null,
+          },
+          firstLessonId: item.firstLessonId ?? item.nextLesson?.id ?? null,
+          nextLessonTitle: item.nextLessonTitle ?? item.nextLesson?.title ?? null,
+        }))
+
+        setCourses(formattedCourses)
+        setStats({
+          coursesInProgress: data.stats?.coursesInProgress ?? data.stats?.inProgressCourses ?? formattedCourses.filter(c => !c.completed).length,
+          certificatesEarned: data.stats?.certificatesEarned ?? data.stats?.certificatesCount ?? (data.certificates?.length || 0),
+          learningHours: data.stats?.learningHours ?? 0,
+          forumPosts: data.stats?.forumPosts ?? (data.recentPosts?.length || 0),
         })
         setDiscussionUpdates(data.discussionUpdates || [])
         setUpcomingEvents(data.upcomingEvents || [])
-        setLiveSchedules(data.liveSchedules || [])
+        setLiveSchedules(data.liveSchedules || data.liveClasses || [])
       } catch (err) {
         console.error('Error loading dashboard:', err)
         setCourses([])
@@ -243,15 +265,17 @@ export default function DashboardPage() {
                             {item.nextLessonTitle ?? '—'}
                           </div>
 
-                          {item.firstLessonId && (
-                            <Button size="sm" className="w-full sm:w-auto" asChild>
-                              <TransitionLink
-                                href={`/learn/course/${item.course.slug}/lesson/${item.firstLessonId}`}
-                              >
-                                    {t('dashboard.continue', 'Continue')}
-                              </TransitionLink>
-                            </Button>
-                          )}
+                          <Button size="sm" className="w-full sm:w-auto" asChild>
+                            <TransitionLink
+                              href={
+                                item.firstLessonId
+                                  ? `/learn/course/${item.course.slug}/lesson/${item.firstLessonId}`
+                                  : `/learn/course/${item.course.slug}`
+                              }
+                            >
+                              {item.progress > 0 ? t('dashboard.continue', 'Continue') : t('dashboard.startCourse', 'Start Course')}
+                            </TransitionLink>
+                          </Button>
                         </div>
                       </div>
                     </div>

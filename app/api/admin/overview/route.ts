@@ -253,7 +253,7 @@ export async function GET(request: Request) {
     const [rawProfiles, rawUsers, rawCourses, rawEnrollments, rawProgress, rawOrders, rawTopics, rawCertificates, rawLiveRegistrations] =
       await Promise.all([
         db.select().from(profiles),
-        db.select({ id: users.id, email: users.email }).from(users),
+        db.select({ id: users.id, email: users.email, name: users.name, createdAt: users.createdAt }).from(users),
         db.select().from(courses),
         db.select().from(courseEnrollments),
         db.select().from(courseProgress),
@@ -564,54 +564,101 @@ export async function GET(request: Request) {
 
     const courseDistribution = buildPercentDistribution(categoryCounts)
 
-    const studentProfileRows = allProfiles
-      .filter((profile) => (profile.role?.toLowerCase() === 'student'))
-      .slice()
-      .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime())
+    const userMap = new Map(rawUsers.map((u) => [u.id, u]))
+    const profileMap = new Map(rawProfiles.map((p) => [p.id, p]))
 
     const enrollmentsByUser = new Map<string, EnrollmentRow[]>()
     allEnrollments.forEach((enrollment) => {
-      const bucket = enrollmentsByUser.get(enrollment.user_id) ?? []
+      const uid = String(enrollment.user_id || '').toLowerCase().trim()
+      const bucket = enrollmentsByUser.get(uid) ?? []
       bucket.push(enrollment)
-      enrollmentsByUser.set(enrollment.user_id, bucket)
+      enrollmentsByUser.set(uid, bucket)
     })
 
-    const studentIds = studentProfileRows.map((profile) => profile.id)
-    const courseNamesByStudent = new Map<string, StudentCourse[]>()
+    const studentCandidateMap = new Map<string, { id: string; name: string; email: string; createdAt: string }>()
 
-    studentIds.forEach((studentId) => {
-      const studentEnrollments = (enrollmentsByUser.get(studentId) ?? [])
+    // Check profiles
+    rawProfiles.forEach((p) => {
+      const role = (p.role || 'student').toLowerCase()
+      if (role !== 'admin' && role !== 'reviewer') {
+        const u = userMap.get(p.id)
+        studentCandidateMap.set(p.id.toLowerCase().trim(), {
+          id: p.id,
+          name: p.fullName?.trim() || u?.name?.trim() || 'Student',
+          email: u?.email || userEmailById.get(p.id) || 'Not available',
+          createdAt: p.createdAt?.toISOString() ?? (u?.createdAt ? new Date(u.createdAt).toISOString() : ''),
+        })
+      }
+    })
+
+    // Check users
+    rawUsers.forEach((u) => {
+      const p = profileMap.get(u.id)
+      const role = (p?.role || 'student').toLowerCase()
+      if (role !== 'admin' && role !== 'reviewer') {
+        const key = u.id.toLowerCase().trim()
+        if (!studentCandidateMap.has(key)) {
+          studentCandidateMap.set(key, {
+            id: u.id,
+            name: p?.fullName?.trim() || u.name?.trim() || u.email?.split('@')[0] || 'Student',
+            email: u.email || 'Not available',
+            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : (p?.createdAt?.toISOString() ?? ''),
+          })
+        }
+      }
+    })
+
+    // Also include any user who has enrollments
+    allEnrollments.forEach((e) => {
+      const key = String(e.user_id || '').toLowerCase().trim()
+      if (!studentCandidateMap.has(key)) {
+        const u = userMap.get(e.user_id)
+        const p = profileMap.get(e.user_id)
+        studentCandidateMap.set(key, {
+          id: e.user_id,
+          name: p?.fullName?.trim() || u?.name?.trim() || u?.email?.split('@')[0] || 'Enrolled Student',
+          email: u?.email || userEmailById.get(e.user_id) || 'Not available',
+          createdAt: e.enrolled_at || '',
+        })
+      }
+    })
+
+    const studentCandidates = Array.from(studentCandidateMap.values()).sort((a, b) => {
+      const aEnrollments = (enrollmentsByUser.get(a.id.toLowerCase().trim()) ?? []).length
+      const bEnrollments = (enrollmentsByUser.get(b.id.toLowerCase().trim()) ?? []).length
+      if (bEnrollments !== aEnrollments) return bEnrollments - aEnrollments
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    })
+
+    const studentRows: StudentRow[] = studentCandidates.map((student, index) => {
+      const uid = student.id.toLowerCase().trim()
+      const studentEnrollments = (enrollmentsByUser.get(uid) ?? [])
         .slice()
         .sort((a, b) => new Date(b.enrolled_at ?? 0).getTime() - new Date(a.enrolled_at ?? 0).getTime())
 
-      const courseProgress = studentEnrollments.map((enrollment) => {
+      const coursesForStudent: StudentCourse[] = studentEnrollments.map((enrollment) => {
         const progress = progressById.get(enrollment.progress_id ?? '') ?? progressByEnrollmentId.get(enrollment.id)
         const completed = progress?.completed === true || (typeof progress?.progress_percentage === 'number' && progress.progress_percentage >= 100)
-        const course = courseById.get(enrollment.course_id)
+        const course = courseById.get(Number(enrollment.course_id))
 
         return {
           courseId: enrollment.course_id,
-          title: course?.title || 'Course',
+          title: course?.title || `Course #${enrollment.course_id}`,
           slug: course?.slug || '',
           enrolledAt: enrollment.enrolled_at,
           completed,
           completedAt: progress?.completed_at ?? null,
-          progressPercentage: progress?.progress_percentage ?? null,
+          progressPercentage: progress?.progress_percentage ?? 0,
         }
       })
 
-      courseNamesByStudent.set(studentId, courseProgress)
-    })
-
-    const studentRows: StudentRow[] = studentProfileRows.map((profile, index) => {
-      const coursesForStudent = courseNamesByStudent.get(profile.id) ?? []
       const completedCourses = coursesForStudent.filter((course) => course.completed).length
 
       return {
-        id: profile.id,
+        id: student.id,
         number: index + 1,
-        name: profile.full_name?.trim() || `Student ${index + 1}`,
-        email: userEmailById.get(profile.id) || 'Not available',
+        name: student.name,
+        email: student.email,
         enrolledCourses: coursesForStudent.length,
         completedCourses,
         courses: coursesForStudent,
@@ -738,7 +785,7 @@ export async function GET(request: Request) {
       },
       students: {
         stats: {
-          totalStudents,
+          totalStudents: studentCandidates.length,
           totalEnrollments,
           totalCompletions,
           completionRate,

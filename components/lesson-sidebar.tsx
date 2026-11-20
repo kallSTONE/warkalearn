@@ -22,7 +22,7 @@ interface Lesson {
   title: string
   completed: boolean
   progress: number
-  topics: Topic[]  // <- change this
+  topics?: Topic[]  // <- change this
 }
 
 interface CourseLessons {
@@ -116,7 +116,7 @@ export function LessonSidebar({
 
                   <AccordionContent className="px-0 pb-2 text-sm text-muted-foreground">
                     <ul className="space-y-1.5">
-                      {lesson.topics.map((topic, idx) => (
+                    {(lesson.topics ?? []).map((topic, idx) => (
                         <li key={idx} className="flex gap-2 ml-6">
                           <span className="text-primary">•</span>
                           <span>{topic.title}</span>
