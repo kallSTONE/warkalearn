@@ -23,7 +23,7 @@ export default function AboutPage() {
           className="max-w-3xl space-y-6"
         >
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
-            Warka Learn — practical learning for modern careers
+            Warka Learn — practical learning for Today's careers
           </h1>  
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Warka Learn delivers tech, language, business, and creative courses with live sessions, projects, and
