@@ -316,7 +316,7 @@ export default async function Home() {
                       })}
                     </p>
                     <p>
-                      <span className="font-medium text-foreground">{t('home.live.format', 'Format:')}</span> {session.meeting_platform}
+                      <span className="font-medium text-foreground">{t('home.live.format', 'Learning Format:')}</span> {session.meeting_platform}
                     </p>
                     <p>
                       <span className="font-medium text-foreground">{t('home.live.price', 'Price:')}</span> {session.currency} {Number(session.price || 0).toLocaleString(locale)}
