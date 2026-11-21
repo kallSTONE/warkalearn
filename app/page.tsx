@@ -460,7 +460,7 @@ export default async function Home() {
             <p className="text-muted-foreground mb-6">
               {t(
                 'home.mentors.p1',
-                'Neway Learn instructors are experienced practitioners across tech, language, and business.'
+                'Learn from knowledgeable instructors and industry practitioners who bring real-world experience into every lesson.'
               )}
             </p>
             <p className="text-muted-foreground mb-6">
