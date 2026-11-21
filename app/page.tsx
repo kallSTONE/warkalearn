@@ -423,7 +423,7 @@ export default async function Home() {
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-purple-600/10 text-purple-700 mx-auto">
                 <span className="text-lg">🧠</span>
               </div>
-              <h3 className="text-center text-lg font-semibold">{t('home.why.card.feedback.title', 'Mentor feedback')}</h3>
+              <h3 className="text-center text-lg font-semibold">{t('home.why.card.feedback.title', 'Expert Guidance and Feedback')}</h3>
               <p className="mt-2 text-center text-sm text-muted-foreground">
                 {t('home.why.card.feedback.body', 'Targeted feedback helps you improve faster and stay on track.')}
               </p>
@@ -443,7 +443,7 @@ export default async function Home() {
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-slate-600/10 text-slate-700 mx-auto">
                 <span className="text-lg">🤝</span>
               </div>
-              <h3 className="text-center text-lg font-semibold">{t('home.why.card.community.title', 'Supportive community')}</h3>
+              <h3 className="text-center text-lg font-semibold">{t('home.why.card.community.title', 'Learn and Grow Togtheer')}</h3>
               <p className="mt-2 text-center text-sm text-muted-foreground">
                 {t('home.why.card.community.body', 'Learn with peers, get feedback, and stay motivated with study circles.')}
               </p>
