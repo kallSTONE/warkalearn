@@ -92,7 +92,7 @@ export default async function Home() {
           {
             id: 'demo-monthly',
             slug: 'demo-monthly',
-            title: t('home.live.demo.monthly.title', 'Neway Premium Monthly (1 month)'),
+            title: t('home.live.demo.monthly.title', 'Warka Premium Monthly (1 month)'),
             instructor_name: 'Lidia M.',
             meeting_platform: t('home.live.demo.monthly.mode', 'Live on Zoom'),
             start_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString(),
@@ -106,7 +106,7 @@ export default async function Home() {
           {
             id: 'demo-quarterly', 
             slug: 'demo-quarterly',
-            title: t('home.live.demo.quarterly.title', 'Neway Premium Quarterly (3 months)'),
+            title: t('home.live.demo.quarterly.title', 'Warka Premium Quarterly (3 months)'),
             instructor_name: 'Samuel T.',
             meeting_platform: t('home.live.demo.quarterly.mode', 'Live on Google Meet'),
             start_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 4).toISOString(),
