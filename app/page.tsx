@@ -52,7 +52,7 @@ export default async function Home() {
     settings?.hero_subtitle ??
     t(
       'home.hero.subtitle',
-      'Neway Learn offers expert-led courses in tech, language, and business with live sessions, projects, and flexible programs.'
+      'Develop in-demand skills through expert-led courses, interactive live sessions, hands-on projects, and flexible learning programs designed around your goals.'
     )
   const heroCtaText = settings?.hero_cta_text ?? t('home.hero.cta', 'Explore programs ->')
   const heroCtaLink = settings?.hero_cta_link ?? '/learn'
