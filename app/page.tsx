@@ -247,7 +247,7 @@ export default async function Home() {
       <section className="py-12 my-2 w-full bg-gradient-to-r from-background via-blue-900/15 dark:via-blue-900/20 to-transparent overflow-hidden">
 
         <h2 className="text-center text-xl sm:text-2xl font-semibold mb-8">
-          {t('home.orgs.title', 'We train Students from these organizations')}
+          {t('home.orgs.title', 'Trusted by Leading Organizations and Institutions')}
         </h2>
 
         <div className="relative w-full overflow-hidden">
