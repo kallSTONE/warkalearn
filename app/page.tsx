@@ -100,7 +100,7 @@ export default async function Home() {
             price: 1500,
             currency: 'ETB',
             registration_status: 'open',
-            description: t('home.live.subtitle', 'Join instructor-led sessions to practice speaking, ask questions in real time, and learn with peers.'),
+            description: t('home.live.subtitle', 'Experience interactive learning with expert instructors, real-time discussions, practical exercises, and a community of motivated learners.'),
             cover_image_url: '/assets/images/courses-Thumbnail/DefaultThumbnail.png',
           },
           {
