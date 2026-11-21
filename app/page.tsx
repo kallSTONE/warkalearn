@@ -47,7 +47,7 @@ export default async function Home() {
   const settings = await getSiteSettings()
   const heroTitle =
     settings?.hero_title ??
-    t('home.hero.title', 'Build skills for work, business, and life')
+    t('home.hero.title', 'Learn Today. Build Your Skills. Shape Your Future.')
   const heroSubtitle =
     settings?.hero_subtitle ??
     t(
