@@ -178,7 +178,7 @@ export default async function Home() {
         <div className="z-10 w-full justify-center py-12 md:flex md:w-[45%] md:items-center md:py-20">
           <div className="relative w-full max-w-3xl overflow-hidden rounded-xl shadow-lg aspect-video">
             <iframe
-              title={t('home.hero.video.title', 'Neway Learn Hero Video')}
+              title={t('home.hero.video.title', 'Discover Your Learning Journey with Neway Learn')}
               className="h-full w-full"
               loading="lazy"
               referrerPolicy="strict-origin-when-cross-origin"
