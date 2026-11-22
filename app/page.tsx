@@ -445,7 +445,7 @@ export default async function Home() {
               </div>
               <h3 className="text-center text-lg font-semibold">{t('home.why.card.community.title', 'Learn and Grow Togtheer')}</h3>
               <p className="mt-2 text-center text-sm text-muted-foreground">
-                {t('home.why.card.community.body', 'Learn with peers, get feedback, and stay motivated with study circles.')}
+                {t('home.why.card.community.body', 'Learn with peers, get feedback, and stay motivated with study groups inside the community.')}
               </p>
             </div>
           </div>
