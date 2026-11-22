@@ -414,7 +414,7 @@ export default async function Home() {
               <p className="mt-2 text-center text-sm text-muted-foreground">
                 {t(
                   'home.why.card.flexible.body',
-                  'Join live cohorts or learn on your schedule with recordings and guided exercises.'
+                  'Join live cohorts or learn on your schedule with recordings and guided practical exercises.'
                 )}
               </p>
             </div>
