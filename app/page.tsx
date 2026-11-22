@@ -520,7 +520,7 @@ export default async function Home() {
             <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
               {t(
                 'home.success.subtitle',
-                'See how learners improved confidence, clarity, and real-world communication.'
+                'See how learners improved vocabulary, confidence, clarity, spontaneity and real-world communication.'
               )}
             </p>
           </div>
