@@ -498,7 +498,7 @@ export default async function Home() {
               <p className="text-muted-foreground mt-2">
                 {t(
                   'home.articles.subtitle',
-                  'Practical tips, study plans, and skill-building strategies for modern learners.'
+                  'Practical tips, study plans, and strategies to building skills for modern learners.'
                 )}
               </p>
             </div>
