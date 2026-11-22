@@ -380,7 +380,7 @@ export default async function Home() {
             <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
               {t(
                 'home.why.subtitle',
-                'Learn with expert guidance, practical projects, and clear progress at every level.'
+                'Grow with expert guidance, practical projects, and clear progress at every level.'
               )}
             </p>
           </div>
