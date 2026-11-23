@@ -90,7 +90,7 @@ export default function AboutPage() {
                 <h3 className="text-2xl font-semibold">Our mission</h3>
               </div>   
               <p className="text-muted-foreground">
-                Help learners build real-world skills with clarity and confidence for work, study, and growth.
+                Help learners build real-world skills with clarity and confidence for work, Business, and growth.
                 We focus on practical projects, applied knowledge, and measurable outcomes.
               </p>
             </CardContent>
