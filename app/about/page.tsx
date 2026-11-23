@@ -176,7 +176,7 @@ export default function AboutPage() {
         >
           <h2 className="text-3xl font-bold mb-4">Our team</h2>
           <p className="text-muted-foreground mb-6">
-            We are a small, dedicated team of instructors, industry mentors, and curriculum designers
+            We are a dedicated team of instructors, industry mentors, and curriculum designers
             committed to making practical learning engaging and effective.
           </p>
           <Link href="/register"><Button>Learn with us</Button></Link>
