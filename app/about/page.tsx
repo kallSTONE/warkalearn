@@ -67,7 +67,7 @@ export default function AboutPage() {
         >
           <h2 className="text-3xl font-bold mb-4">Our story</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Warka Learn started in 2023 with a simple goal: help learners build practical skills with confidence.
+            Warka Learn started in 2023 with a simple goal: help learners build practical skills and use it with confidence.
             We believe progress comes from consistent practice, clear guidance, and a community that keeps
             you motivated. Today we build programs that connect learners with expert instructors and
             real-world projects.
