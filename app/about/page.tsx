@@ -26,8 +26,8 @@ export default function AboutPage() {
             Warka Learn — practical learning for Today's careers
           </h1>  
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Warka Learn delivers tech, language, business, and creative courses with live sessions, projects, and
-            a supportive community for learners in Ethiopia and beyond. Our goal is to make real-world
+            Warka Learn delivers tech, language, business, and modern creative courses with live sessions, projects, and
+            a supportive community for learners. Our goal is to make real-world
             training accessible, practical, and flexible for busy schedules.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
