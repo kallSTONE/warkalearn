@@ -469,7 +469,7 @@ export default async function Home() {
             <p className="text-muted-foreground mb-6">
               {t(
                 'home.mentors.p3',
-                'Every course includes guided practice, feedback, and learning plans tailored to your goals.'
+                'Every course is designed to help practice consistently, with feedback, and learning plans tailored to your goals.'
               )}
             </p>
           </div>
