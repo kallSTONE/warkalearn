@@ -325,7 +325,7 @@ export default async function Home() {
 
                   <Button className="mt-6 home-card-cta" asChild>
                     <TransitionLink href={`/learn/live?focus=${encodeURIComponent(session.slug)}`}>
-                      {t('home.live.reserve', 'Reserve Your Seat')}
+                      {t('home.live.reserve', 'secure your spot')}
                     </TransitionLink>
                   </Button>
                 </div>
