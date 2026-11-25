@@ -52,7 +52,7 @@ export default async function Home() {
     settings?.hero_subtitle ??
     t(
       'home.hero.subtitle',
-      'Develop in-demand skills through expert-led courses, interactive live sessions, hands-on projects, and flexible learning programs designed around your goals.'
+      'Gain practical, in-demand skills through expert-led courses, interactive live classes, and hands-on projects. Learn at your own pace and take the next step toward your personal and professional goals.'
     )
   const heroCtaText = settings?.hero_cta_text ?? t('home.hero.cta', 'Explore Our Programs ->')
   const heroCtaLink = settings?.hero_cta_link ?? '/learn'
