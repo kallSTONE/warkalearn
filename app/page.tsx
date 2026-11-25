@@ -456,7 +456,7 @@ export default async function Home() {
       <section className="py-16 bg-background w-full px-8">
         <div className="container mx-auto flex max-w-5xl flex-col items-center gap-10 p-8 text-center lg:flex-row lg:items-center lg:text-left">
           <div className="w-full lg:flex-1">
-            <h2 className="text-3xl font-montserrat font-bold mb-4">{t('home.mentors.title', 'Meet the mentors')}</h2>
+            <h2 className="text-3xl font-montserrat font-bold mb-4">{t('home.mentors.title', 'Meet the mentors and grow with them.')}</h2>
             <p className="text-muted-foreground mb-6">
               {t(
                 'home.mentors.p1',
