@@ -516,7 +516,7 @@ export default async function Home() {
       <section className="py-16 bg-background">
         <div className="container">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-montserrat font-bold">{t('home.success.title', 'Learner success stories')}</h2>
+            <h2 className="text-3xl font-montserrat font-bold">{t('home.success.title', 'Student success stories')}</h2>
             <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
               {t(
                 'home.success.subtitle',
