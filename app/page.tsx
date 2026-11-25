@@ -503,7 +503,7 @@ export default async function Home() {
               </p>
             </div>
             <Button size="lg" className={`mt-6 ${homeCtaClass}`} asChild>
-              <TransitionLink href="/blog">{t('home.articles.cta', 'View all articles')}</TransitionLink>
+              <TransitionLink href="/blog">{t('home.articles.cta', 'Explore all articles')}</TransitionLink>
             </Button>
           </div>
 
