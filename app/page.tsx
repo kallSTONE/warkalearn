@@ -423,7 +423,7 @@ export default async function Home() {
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-purple-600/10 text-purple-700 mx-auto">
                 <span className="text-lg">🧠</span>
               </div>
-              <h3 className="text-center text-lg font-semibold">{t('home.why.card.feedback.title', 'Expert Guidance and Feedback')}</h3>
+              <h3 className="text-center text-lg font-semibold">{t('home.why.card.feedback.title', 'Expert Guidance and Personalized Feedback')}</h3>
               <p className="mt-2 text-center text-sm text-muted-foreground">
                 {t('home.why.card.feedback.body', 'Targeted feedback helps you improve faster and stay on track.')}
               </p>
