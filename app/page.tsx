@@ -8,7 +8,7 @@ import { getSiteSettings } from '@/lib/site-settings'
 import ProgramSpotlightModal from '@/components/programs/program-spotlight-modal'
 import { db } from '@/db'
 import { liveClasses } from '@/db/schema'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'f
 import { cookies } from 'next/headers'
 import {
   DEFAULT_LOCALE, 
@@ -114,7 +114,7 @@ export default async function Home() {
             price: 3600,
             currency: 'ETB',
             registration_status: 'open',
-            description: t('home.live.subtitle', 'Join instructor-led sessions to practice speaking, ask questions in real time, and learn with peers.'),
+            description: t('home.live.subtitle', 'Take part in interactive live sessions led by experienced instructors. Ask questions, practice new skills, receive immediate feedback, and connect with fellow learners.'),
             cover_image_url: '/assets/images/courses-Thumbnail/DefaultThumbnail.png',
           },
         ]
